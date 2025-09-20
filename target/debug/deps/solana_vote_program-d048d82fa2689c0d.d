@@ -1,0 +1,10 @@
+/Users/brimigs/anchor-litesvm/target/debug/deps/libsolana_vote_program-d048d82fa2689c0d.rmeta: /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/lib.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_processor.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_state/mod.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_transaction.rs
+
+/Users/brimigs/anchor-litesvm/target/debug/deps/libsolana_vote_program-d048d82fa2689c0d.rlib: /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/lib.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_processor.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_state/mod.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_transaction.rs
+
+/Users/brimigs/anchor-litesvm/target/debug/deps/solana_vote_program-d048d82fa2689c0d.d: /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/lib.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_processor.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_state/mod.rs /Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_transaction.rs
+
+/Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/lib.rs:
+/Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_processor.rs:
+/Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_state/mod.rs:
+/Users/brimigs/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/solana-vote-program-2.2.4/src/vote_transaction.rs:

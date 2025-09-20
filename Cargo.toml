@@ -2,13 +2,11 @@
 name = "anchor-litesvm"
 version = "0.1.0"
 edition = "2021"
-authors = ["Anchor LiteSVM Contributors"]
 description = "Anchor testing utilities for LiteSVM - simplifying Anchor program testing"
 documentation = "https://docs.rs/anchor-litesvm"
 license = "MIT"
-repository = "https://github.com/anchor-litesvm/anchor-litesvm"
+repository = "https://github.com/brimigs/anchor-litesvm#"
 keywords = ["solana", "anchor", "litesvm", "testing", "blockchain"]
-categories = ["development-tools::testing", "cryptography::cryptocurrencies"]
 
 [dependencies]
 litesvm = "0.6.1"
@@ -23,5 +21,3 @@ thiserror = "1.0"
 spl-token = "7.0.0"
 spl-associated-token-account = "6.0.0"
 
-[dev-dependencies]
-# For testing the library itself
