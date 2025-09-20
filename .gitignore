@@ -1,0 +1,45 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# Cargo
+Cargo.lock
+# Keep Cargo.lock for binary crates, comment out for libraries
+# Uncomment the line above if this is a library
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Debug
+*.dSYM/
+
+# Testing
+tarpaulin-report.html
+cobertura.xml
+
+# Profiling
+*.prof
+perf.data
+perf.data.old
+flamegraph.svg
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+*.exe
+
+# Backup files
+*.bak
+*.tmp
+*.temp
