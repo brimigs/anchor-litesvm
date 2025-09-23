@@ -1,5 +1,6 @@
 # Rust
 /target/
+anchor-escrow-example/target/
 **/*.rs.bk
 *.pdb
 

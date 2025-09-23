@@ -1,186 +1,100 @@
-# anchor-litesvm
+# anchor-litesvm Workspace
 
-This is a crate for writing LiteSVM tests when you are testing an Anchor program.
+Testing utilities for Solana programs using LiteSVM, split into two specialized crates:
 
-[![Crates.io](https://img.shields.io/crates/v/anchor-litesvm.svg)](https://crates.io/crates/anchor-litesvm)
+## Crate Structure
 
-<!-- [![Documentation](https://docs.rs/anchor-litesvm/badge.svg)](https://docs.rs/anchor-litesvm)
-[![License](https://img.shields.io/crates/l/anchor-litesvm.svg)](https://github.com/anchor-litesvm/anchor-litesvm#license) -->
-
-## Overview
-
-`anchor-litesvm` provides a minimal wrapper around LiteSVM that handles Anchor-specific patterns, reducing test code by 60-70% while maintaining full control and flexibility.
-
-## Quick Start
+### `litesvm-utils`
+General-purpose testing utilities for any Solana program:
+- Framework agnostic - works with any Solana program
+- Account creation and funding helpers
+- Token operations (mints, accounts, minting)
+- Transaction execution with result analysis
+- Assertion helpers for testing
+- PDA derivation utilities
 
 ```rust
-use anchor_litesvm::AnchorLiteSVM;
+use litesvm_utils::{LiteSVMBuilder, TestHelpers, AssertionHelpers};
 
-let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
-
-// access helper methods from the Anchor Context
-let account = ctx.create_funded_account(10_000_000_000)?;
-let mint = ctx.create_token_mint(&account, 9)?;
+// Works with any Solana program
+let mut svm = LiteSVMBuilder::build_with_program(program_id, program_bytes);
+let account = svm.create_funded_account(10_SOL)?;
+let mint = svm.create_token_mint(&authority, 9)?;
 ```
 
-## Why Use anchor-litesvm?
-
-### 1. Instruction Builder with Direct Execution
-
-Eliminates ~15 lines of boilerplate per instruction:
+### `anchor-litesvm`
+Anchor-specific integration layer:
+- Automatic discriminator calculation for Anchor instructions
+- Anchor account deserialization with proper type handling
+- Fluent instruction builder with tuple arguments
+- Path toward anchor-client compatibility (WIP)
 
 ```rust
-// Before (manual approach):
-let mut hasher = Sha256::new();
-hasher.update(b"global:make");
-let hash = hasher.finalize();
-let mut discriminator = [0u8; 8];
-discriminator.copy_from_slice(&hash[..8]);
+use anchor_litesvm::{AnchorLiteSVM, tuple_args};
 
-let mut instruction_data = discriminator.to_vec();
-instruction_data.extend_from_slice(&seed.to_le_bytes());
-instruction_data.extend_from_slice(&receive.to_le_bytes());
-instruction_data.extend_from_slice(&amount.to_le_bytes());
-
-let make_instruction = Instruction {
-    program_id,
-    accounts: vec![
-        AccountMeta::new(maker.pubkey(), true),  // maker
-        AccountMeta::new(escrow_pda, false),      // escrow
-        AccountMeta::new_readonly(mint_a.pubkey(), false), // mint_a
-        AccountMeta::new_readonly(mint_b.pubkey(), false), // mint_b
-        AccountMeta::new(maker_ata_a, false),     // maker_ata_a
-        AccountMeta::new(vault, false),           // vault
-        AccountMeta::new_readonly(spl_associated_token_account::id(), false), // associated_token_program
-        AccountMeta::new_readonly(spl_token::id(), false), // token_program
-        AccountMeta::new_readonly(system_program::id(), false), // system_program
-    ],
-    data: instruction_data,
-};
-
-let tx = Transaction::new_signed_with_payer(
-    &[make_instruction],
-    Some(&maker.pubkey()),
-    &[&maker],
-    svm.latest_blockhash(),
-);
-
-let result = svm.send_transaction(tx);
-
-// After (with anchor-litesvm):
-// Build and execute in one call
-let result = ctx.instruction_builder("make")
-    .signer("maker", &maker)
-    .account_mut("escrow", escrow_pda)
-    .account("mint_a", mint_a)
-    .system_program()
-    .args(tuple_args((seed, receive, amount)))  // No struct needed!
+// Anchor-specific conveniences
+let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
+let result = ctx.instruction_builder("transfer")
+    .signer("from", &maker)
+    .account_mut("to", recipient)
+    .args(tuple_args((amount,)))  // No struct needed!
     .execute(&mut ctx, &[&maker])?;
 ```
 
-### 2. Type-Safe Account Deserialization
+## Installation
 
-Automatic Anchor account unpacking:
+Add to your `Cargo.toml`:
 
-```rust
-// Before:
-let account_data = svm.get_account(&escrow_pda).unwrap();
-let escrow: EscrowState = EscrowState::try_from_slice(&account_data.data[8..]).unwrap();
+```toml
+# For general Solana testing
+[dev-dependencies]
+litesvm-utils = "0.1"
 
-// After:
-let escrow: EscrowState = ctx.get_anchor_account(&escrow_pda)?;
+# For Anchor programs (includes litesvm-utils)
+[dev-dependencies]
+anchor-litesvm = "0.1"
 ```
 
-### 3. Transaction Execution Helpers
+## Why Two Crates?
 
-Simplified transaction execution:
+1. **Clean separation of concerns** - General utilities vs Anchor-specific code
+2. **Reusability** - Non-Anchor projects can use just `litesvm-utils`
+3. **Smaller dependencies** - Only pull in what you need
+4. **Future compatibility** - `anchor-litesvm` will integrate with `anchor-client` for consistent production/testing syntax
 
+## Migration from v0.0.x
+
+The original `anchor-litesvm` has been split:
+- General helpers → `litesvm-utils`
+- Anchor-specific code → `anchor-litesvm`
+
+Most code will continue to work as `anchor-litesvm` re-exports `litesvm-utils` functionality.
+
+## Examples
+
+See the `examples/` directory for usage patterns:
+- `workspace_demo.rs` - Overview of both crates
+- `basic_usage.rs` - Simple test setup
+- `advanced_features.rs` - Complex testing scenarios
+
+## Future Development
+
+### Coming Soon
+- Full `anchor-client` integration for identical syntax between testing and production
+- IDL-based instruction building with automatic account resolution
+- Enhanced error messages with program log parsing
+
+### Goal
+Make testing syntax identical to production:
 ```rust
-// Execute single instruction
-let result = ctx.send_instruction(ix, &[&signer])?;
-result.assert_success();
-
-// Execute multiple instructions
-let result = ctx.send_instructions(&[ix1, ix2], &[&signer])?;
-
-// Build and execute in one call
-let result = ctx.execute("transfer", accounts, args, &[&signer])?;
-
-// Transaction result helpers
-assert!(result.has_log("Transfer complete"));
-println!("Used {} compute units", result.compute_units());
+// Same code for testing AND production!
+let program = client.program(program_id);
+program.request()
+    .accounts(my_program::accounts::Transfer { from, to })
+    .args(my_program::instruction::Transfer { amount })
+    .send()?;
 ```
 
-### 4. Test Account Helpers
+## License
 
-Streamlined account creation for tests:
-
-```rust
-// Create funded account
-let maker = ctx.create_funded_account(10_000_000_000)?;
-
-// Create multiple accounts
-let accounts = ctx.create_funded_accounts(5, 1_000_000_000)?;
-
-// Create token mint
-let mint = ctx.create_token_mint(&authority, 9)?;
-
-// Create token account and mint tokens
-let ata = ctx.create_token_account(
-    &owner,
-    &mint.pubkey(),
-    Some((1_000_000_000, &mint_authority))  // Optional: mint tokens
-)?;
-
-// Batch airdrop
-ctx.batch_airdrop(&[&account1, &account2], 1_000_000_000)?;
-```
-
-### 5. Assertion Helpers
-
-Clean test assertions:
-
-```rust
-// Account assertions
-ctx.assert_account_exists(&pda);
-ctx.assert_account_closed(&old_account);
-ctx.assert_accounts_closed(&[&escrow, &vault]);
-
-// Token balance assertions
-ctx.assert_token_balance(&ata, 1_000_000_000);
-ctx.assert_token_balance_with_msg(&ata, expected, "Should have 1000 tokens");
-
-// Lamports and owner assertions
-ctx.assert_account_lamports(&account, 5_000_000_000);
-ctx.assert_account_owner(&token_account, &spl_token::id());
-```
-
-### 6. Simplified Test Setup
-
-Multiple ways to initialize your test environment:
-
-```rust
-// Simplest - one line setup
-let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
-
-// Builder pattern for multiple programs
-let mut ctx = AnchorLiteSVM::new()
-    .deploy_program(program1_id, program1_bytes)
-    .deploy_program(program2_id, program2_bytes)
-    .build();
-
-// Extension trait on Pubkey
-use anchor_litesvm::ProgramTestExt;
-let mut ctx = PROGRAM_ID.test_with(program_bytes);
-```
-
-### 7. Direct LiteSVM Access
-
-The `AnchorContext` provides full access to the underlying LiteSVM instance:
-
-```rust
-let mut ctx = AnchorContext::new(svm, program_id);
-// Direct access for any LiteSVM operations
-ctx.svm.airdrop(&pubkey, amount);
-ctx.svm.send_transaction(tx);
-```
+MIT
