@@ -22,7 +22,7 @@
 //! ## Quick Start
 //!
 //! ```ignore
-//! use anchor_litesvm::{AnchorLiteSVM, tuple_args};
+//! use anchor_litesvm::AnchorLiteSVM;
 //! use solana_program::pubkey::Pubkey;
 //!
 //! // Initialize with Anchor program
@@ -30,33 +30,30 @@
 //! let program_bytes = include_bytes!("../target/deploy/my_anchor_program.so");
 //! let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 //!
-//! // Build and execute Anchor instructions with fluent API
-//! let result = ctx.instruction_builder("transfer")
-//!     .signer("from", &maker)
-//!     .account_mut("to", recipient)
-//!     .args(tuple_args((100u64,)))  // No struct needed!
-//!     .execute(&mut ctx, &[&maker])
-//!     .unwrap();
+//! // Build and execute Anchor instructions with native builder
+//! let ix = ctx.instruction()
+//!     .accounts(my_program::client::accounts::Transfer { ... })
+//!     .args(my_program::client::args::Transfer { amount: 100 })
+//!     .build();
+//!
+//! ctx.execute_instruction(ix, &[&signer]).unwrap();
 //!
 //! // Get Anchor accounts with automatic deserialization
 //! let account: MyAnchorAccount = ctx.get_account(&account_pubkey).unwrap();
 //! ```
 
 pub mod account;
+pub mod anchor_instruction_builder;
 pub mod builder;
-pub mod client;
 pub mod context;
 pub mod instruction;
-pub mod instruction_builder;
 
 // Re-export main types for convenience
 pub use account::{get_anchor_account, get_anchor_account_unchecked, AccountError};
+pub use anchor_instruction_builder::AnchorInstructionBuilder;
 pub use builder::{AnchorLiteSVM, ProgramTestExt};
-pub use client::{ClientBuilder, LiteSvmClient};
 pub use context::AnchorContext;
 pub use instruction::{build_anchor_instruction, calculate_anchor_discriminator};
-#[allow(deprecated)]
-pub use instruction_builder::{InstructionBuilder, tuple_args, TupleArgs};
 
 // Re-export litesvm-utils functionality for convenience
 pub use litesvm_utils::{

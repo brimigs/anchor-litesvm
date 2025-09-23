@@ -12,10 +12,8 @@ keywords = ["solana", "anchor", "litesvm", "testing", "blockchain"]
 litesvm-utils = { path = "../litesvm-utils" }
 litesvm = { workspace = true }
 anchor-lang = { workspace = true }
-anchor-client = { workspace = true }
 solana-sdk = { workspace = true }
 solana-program = { workspace = true }
-solana-client = { workspace = true }
 spl-token = { workspace = true }
 spl-associated-token-account = { workspace = true }
 borsh = { workspace = true }

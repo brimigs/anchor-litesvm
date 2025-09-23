@@ -1,22 +1,16 @@
 //! Builder pattern for setting up Anchor test environments
 //!
 //! This module provides builders specifically designed for Anchor programs,
-//! extending the base LiteSVM builder functionality and integrating with anchor-client.
+//! extending the base LiteSVM builder functionality.
 
 use crate::AnchorContext;
-use anchor_client::{Client, Cluster, Program};
 use litesvm_utils::LiteSVMBuilder;
-use solana_client::rpc_client::RpcClient;
 use solana_program::pubkey::Pubkey;
-use solana_sdk::{
-    commitment_config::CommitmentConfig,
-    signature::{Keypair, Signer},
-};
-use std::rc::Rc;
+use solana_sdk::signature::{Keypair, Signer};
 
-/// Builder for creating an AnchorContext with programs pre-deployed and anchor-client integration
+/// Builder for creating an AnchorContext with programs pre-deployed
 ///
-/// This provides a more ergonomic way to set up Anchor test environments with IDL support.
+/// This provides a more ergonomic way to set up Anchor test environments.
 ///
 /// # Example
 /// ```ignore
@@ -33,14 +27,16 @@ use std::rc::Rc;
 /// // Or use the convenience method for single program
 /// let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 ///
-/// // Get the anchor-client Program for IDL-based instruction building
-/// let program = ctx.program();
+/// // Build instructions using the native builder
+/// let ix = ctx.instruction()
+///     .accounts(...)
+///     .args(...)
+///     .build();
 /// ```
 pub struct AnchorLiteSVM {
     svm_builder: LiteSVMBuilder,
     primary_program_id: Option<Pubkey>,
-    payer: Option<Rc<Keypair>>,
-    commitment: CommitmentConfig,
+    payer: Option<Keypair>,
 }
 
 impl AnchorLiteSVM {
@@ -50,7 +46,6 @@ impl AnchorLiteSVM {
             svm_builder: LiteSVMBuilder::new(),
             primary_program_id: None,
             payer: None,
-            commitment: CommitmentConfig::confirmed(),
         }
     }
 
@@ -58,13 +53,7 @@ impl AnchorLiteSVM {
     ///
     /// If not set, a new keypair will be generated and funded.
     pub fn with_payer(mut self, payer: Keypair) -> Self {
-        self.payer = Some(Rc::new(payer));
-        self
-    }
-
-    /// Set the commitment level
-    pub fn with_commitment(mut self, commitment: CommitmentConfig) -> Self {
-        self.commitment = commitment;
+        self.payer = Some(payer);
         self
     }
 
@@ -92,12 +81,11 @@ impl AnchorLiteSVM {
         self
     }
 
-    /// Build the AnchorContext with all programs deployed and anchor-client integration
+    /// Build the AnchorContext with all programs deployed
     ///
     /// # Returns
     ///
-    /// Returns an AnchorContext with the primary program ID, deployed programs,
-    /// and anchor-client Program instance for IDL-based operations
+    /// Returns an AnchorContext with the primary program ID and deployed programs
     ///
     /// # Panics
     ///
@@ -119,26 +107,10 @@ impl AnchorLiteSVM {
             let payer = Keypair::new();
             // Fund the payer account
             svm.airdrop(&payer.pubkey(), 10_000_000_000).unwrap();
-            Rc::new(payer)
+            payer
         });
 
-        // Create a mock RPC client for anchor-client
-        // This is sufficient for building instructions - we don't need actual RPC
-        let _mock_rpc = RpcClient::new_mock("succeeds");
-
-        // Create anchor-client instance with mock cluster
-        let client = Client::new_with_options(
-            Cluster::Custom(
-                "http://127.0.0.1:8899".to_string(),
-                "ws://127.0.0.1:8900".to_string(),
-            ),
-            payer.clone(),
-            self.commitment,
-        );
-
-        let program: Program<Rc<Keypair>> = client.program(program_id).unwrap();
-
-        AnchorContext::new_with_program(svm, program_id, program, payer)
+        AnchorContext::new_with_payer(svm, program_id, payer)
     }
 
     /// Convenience method to quickly set up a single Anchor program
