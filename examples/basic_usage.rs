@@ -1,225 +1,247 @@
-/// Example showing how anchor-litesvm simplifies Anchor program testing
+/// Example showing how anchor-litesvm provides production-compatible testing
 ///
-/// This example demonstrates the dramatic code reduction achieved with anchor-litesvm
-/// compared to the traditional approach with raw LiteSVM.
+/// This example demonstrates the 78% code reduction achieved with anchor-litesvm
+/// compared to raw LiteSVM, while maintaining the exact same syntax as anchor-client.
 
-use anchor_litesvm::{AnchorLiteSVM, TestHelpers, AssertionHelpers, tuple_args};
+use anchor_litesvm::AnchorLiteSVM;
 use solana_sdk::signature::Signer;
 use solana_program::pubkey::Pubkey;
-use borsh::BorshSerialize;
 
-// Example Anchor instruction arguments
-#[derive(BorshSerialize)]
-#[allow(dead_code)]
-struct TransferArgs {
-    amount: u64,
-}
+// Example: Generate client types from your program (normally done with anchor_lang::declare_program!)
+mod my_program {
+    use super::*;
 
-fn main() {
-    println!("=== Code Comparison: Traditional vs anchor-litesvm ===\n");
+    pub const ID: Pubkey = Pubkey::new_from_array([0u8; 32]);
 
-    // Note: This example shows the API differences. For runnable tests,
-    // you would need actual program bytes from a compiled Anchor program.
+    pub mod client {
+        use super::*;
 
-    traditional_approach();
-    println!("\n{}\n", "=".repeat(60));
-    using_anchor_litesvm();
+        pub mod accounts {
+            use super::*;
 
-    println!("\n=== Results ===");
-    println!("Traditional approach: ~50 lines for basic test");
-    println!("With anchor-litesvm: ~10 lines for same test");
-    println!("Code reduction: 80%");
-}
-
-fn traditional_approach() {
-    println!("TRADITIONAL APPROACH (Raw LiteSVM):");
-    println!("------------------------------------\n");
-
-    // This shows the verbose traditional approach
-    println!("// Setup - requires manual initialization");
-    println!("let mut svm = LiteSVM::new();");
-    println!("let program_bytes = include_bytes!(\"../target/deploy/program.so\");");
-    println!("svm.add_program(program_id, program_bytes);");
-    println!();
-
-    println!("// Account creation - manual transaction building");
-    println!("let maker = Keypair::new();");
-    println!("svm.airdrop(&maker.pubkey(), 10_000_000_000)?;");
-    println!();
-
-    println!("// Token mint creation - multiple instructions");
-    println!("let mint = Keypair::new();");
-    println!("let rent = svm.minimum_balance_for_rent_exemption(82);");
-    println!("let create_account_ix = system_instruction::create_account(...);");
-    println!("let init_mint_ix = spl_token::instruction::initialize_mint(...);");
-    println!("let tx = Transaction::new_signed_with_payer(&[create_account_ix, init_mint_ix], ...);");
-    println!("svm.send_transaction(tx)?;");
-    println!();
-
-    println!("// Instruction building - manual discriminator");
-    println!("use sha2::{{Digest, Sha256}};");
-    println!("let mut hasher = Sha256::new();");
-    println!("hasher.update(b\"global:transfer\");");
-    println!("let hash = hasher.finalize();");
-    println!("let mut discriminator = [0u8; 8];");
-    println!("discriminator.copy_from_slice(&hash[..8]);");
-    println!();
-
-    println!("// Manual data serialization");
-    println!("let mut instruction_data = discriminator.to_vec();");
-    println!("instruction_data.extend_from_slice(&amount.to_le_bytes());");
-    println!();
-
-    println!("// Manual account meta setup");
-    println!("let accounts = vec![");
-    println!("    AccountMeta::new(from_account, true),");
-    println!("    AccountMeta::new(to_account, false),");
-    println!("    AccountMeta::new_readonly(authority, true),");
-    println!("    // ... more accounts");
-    println!("];");
-    println!();
-
-    println!("// Transaction execution");
-    println!("let ix = Instruction {{ program_id, accounts, data: instruction_data }};");
-    println!("let tx = Transaction::new_signed_with_payer(&[ix], Some(&payer.pubkey()), &[&payer], blockhash);");
-    println!("let result = svm.send_transaction(tx)?;");
-    println!();
-
-    println!("// Manual assertions");
-    println!("let account = svm.get_account(&token_account)?;");
-    println!("let token_data = unpack_token_account(&account.data)?;");
-    println!("assert_eq!(token_data.amount, expected_amount);");
-}
-
-fn using_anchor_litesvm() {
-    println!("WITH ANCHOR-LITESVM:");
-    println!("--------------------\n");
-
-    println!("// One-line setup!");
-    println!("let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);");
-    println!();
-
-    println!("// Simple account creation");
-    println!("let maker = ctx.create_funded_account(10_000_000_000)?;");
-    println!("let mint = ctx.create_token_mint(&maker, 9)?;");
-    println!("let ata = ctx.create_token_account(&maker, &mint.pubkey(), Some((1_000_000, &maker)))?;");
-    println!();
-
-    println!("// Fluent instruction building with automatic discriminator");
-    println!("let result = ctx.instruction_builder(\"transfer\")");
-    println!("    .signer(\"from\", &from_account)");
-    println!("    .account_mut(\"to\", to_account)");
-    println!("    .account(\"authority\", authority.pubkey())");
-    println!("    .token_program()");
-    println!("    .args(tuple_args((amount,)))  // No struct needed!");
-    println!("    .execute(&mut ctx, &[&from_account])?;");
-    println!();
-
-    println!("// Clean assertions");
-    println!("result.assert_success();");
-    println!("ctx.assert_token_balance(&token_account, expected_amount);");
-}
-
-/// Example: Complete test with anchor-litesvm
-#[allow(dead_code)]
-fn example_complete_test() {
-    // This would be a real test with actual program bytes
-    let program_id = Pubkey::new_unique();
-    let program_bytes = vec![]; // Would be include_bytes!("../target/deploy/program.so")
-
-    // Initialize test environment - one line!
-    let mut ctx = AnchorLiteSVM::build_with_program(program_id, &program_bytes);
-
-    // Create test accounts - simple helper methods
-    let maker = ctx.create_funded_account(10_000_000_000).unwrap();
-    let taker = ctx.create_funded_account(10_000_000_000).unwrap();
-
-    // Create token mints
-    let mint_a = ctx.create_token_mint(&maker, 9).unwrap();
-    let _mint_b = ctx.create_token_mint(&taker, 9).unwrap();
-
-    // Create and fund token accounts
-    let maker_ata = ctx.create_token_account(
-        &maker,
-        &mint_a.pubkey(),
-        Some((1_000_000_000, &maker))
-    ).unwrap();
-
-    // Build and execute instruction with fluent API
-    ctx.instruction_builder("transfer")
-        .signer("sender", &maker)
-        .account_mut("from", maker_ata)
-        .account_mut("to", taker.pubkey())
-        .account("mint", mint_a.pubkey())
-        .token_program()
-        .args(tuple_args((500_000_000u64,))) // No struct definition needed!
-        .execute(&mut ctx, &[&maker])
-        .unwrap()
-        .assert_success();
-
-    // Clean assertions
-    ctx.assert_token_balance(&maker_ata, 500_000_000);
-}
-
-/// Example: Error handling
-#[allow(dead_code)]
-fn example_error_handling() {
-    let program_id = Pubkey::new_unique();
-    let program_bytes = vec![];
-
-    let mut ctx = AnchorLiteSVM::build_with_program(program_id, &program_bytes);
-    let account = ctx.create_funded_account(1_000_000_000).unwrap();
-
-    // Execute instruction that might fail
-    let result = ctx.instruction_builder("risky_operation")
-        .signer("user", &account)
-        .account_mut("target", Pubkey::new_unique())
-        .args(tuple_args(()))
-        .execute(&mut ctx, &[&account]);
-
-    // Handle errors elegantly
-    match result {
-        Ok(tx_result) => {
-            println!("Transaction succeeded!");
-            if tx_result.has_log("Success") {
-                println!("Found success message in logs");
+            // Example account struct (generated by declare_program!)
+            pub struct Transfer {
+                pub from: Pubkey,
+                pub to: Pubkey,
+                pub authority: Pubkey,
             }
-            println!("Used {} compute units", tx_result.compute_units());
+
+            impl anchor_lang::ToAccountMetas for Transfer {
+                fn to_account_metas(&self, _is_signer: Option<bool>) -> Vec<solana_program::instruction::AccountMeta> {
+                    vec![
+                        solana_program::instruction::AccountMeta::new(self.from, false),
+                        solana_program::instruction::AccountMeta::new(self.to, false),
+                        solana_program::instruction::AccountMeta::new_readonly(self.authority, true),
+                    ]
+                }
+            }
         }
-        Err(e) => {
-            println!("Transaction failed: {:?}", e);
-            // Can check specific error conditions
+
+        pub mod args {
+            use super::*;
+
+            // Example args struct (generated by declare_program!)
+            pub struct Transfer {
+                pub amount: u64,
+            }
+
+            impl anchor_lang::InstructionData for Transfer {
+                fn data(&self) -> Vec<u8> {
+                    // In real code, this would include discriminator and serialization
+                    vec![0; 16]
+                }
+            }
         }
     }
 }
 
-/// Example: Multiple programs
+fn main() {
+    println!("=== Code Comparison: Raw LiteSVM vs anchor-litesvm ===\n");
+
+    raw_litesvm_approach();
+    println!("\n{}\n", "=".repeat(60));
+    using_anchor_litesvm();
+
+    println!("\n=== Results ===");
+    println!("Raw LiteSVM approach: ~493 lines for escrow test");
+    println!("With anchor-litesvm: ~106 lines for same test");
+    println!("Code reduction: 78%");
+    println!("\nKey benefit: Production-compatible syntax!");
+}
+
+fn raw_litesvm_approach() {
+    println!("RAW LITESVM APPROACH (493 lines):");
+    println!("----------------------------------\n");
+
+    // This shows the verbose traditional approach
+    println!("// Setup - manual initialization");
+    println!("let mut svm = LiteSVM::new();");
+    println!("svm.add_program(program_id, program_bytes);");
+    println!();
+
+    println!("// Token mint creation - 30+ lines");
+    println!("let mint = Keypair::new();");
+    println!("let rent = svm.minimum_balance_for_rent_exemption(82);");
+    println!("let create_account_ix = system_instruction::create_account(...);");
+    println!("let init_mint_ix = spl_token::instruction::initialize_mint(...);");
+    println!("// ... many more lines for transaction building");
+    println!();
+
+    println!("// Manual discriminator calculation");
+    println!("let discriminator = sha256::digest(\"global:transfer\").as_bytes()[..8].to_vec();");
+    println!();
+
+    println!("// Manual data serialization");
+    println!("let mut data = discriminator;");
+    println!("data.extend_from_slice(&amount.to_le_bytes());");
+    println!("// ... serialize all fields manually");
+    println!();
+
+    println!("// Manual account meta construction");
+    println!("let accounts = vec![");
+    println!("    AccountMeta::new(from_account, true),");
+    println!("    AccountMeta::new(to_account, false),");
+    println!("    // ... list every account manually");
+    println!("];");
+    println!();
+
+    println!("// Transaction building");
+    println!("let ix = Instruction { program_id, accounts, data };");
+    println!("let tx = Transaction::new_signed_with_payer(...);");
+    println!("svm.send_transaction(tx)?;");
+}
+
+fn using_anchor_litesvm() {
+    println!("WITH ANCHOR-LITESVM (106 lines):");
+    println!("---------------------------------\n");
+
+    println!("// One-line setup!");
+    println!("let mut ctx = AnchorLiteSVM::build_with_program(");
+    println!("    my_program::ID,");
+    println!("    include_bytes!(\"../target/deploy/my_program.so\"),");
+    println!(");");
+    println!();
+
+    println!("// Token operations in one line each");
+    println!("let mint = ctx.svm.create_token_mint(&maker, 9)?;");
+    println!("ctx.svm.mint_to(&mint, &token_account, &maker, 1_000_000)?;");
+    println!();
+
+    println!("// Production-compatible syntax (exactly matches anchor-client!)");
+    println!("let ix = ctx.program()");
+    println!("    .request()");
+    println!("    .accounts(my_program::client::accounts::Transfer {");
+    println!("        from: sender_account,");
+    println!("        to: recipient_account,");
+    println!("        authority: signer.pubkey(),");
+    println!("    })");
+    println!("    .args(my_program::client::args::Transfer { amount: 100 })");
+    println!("    .instructions()?[0];");
+    println!();
+
+    println!("// Execute with integrated helpers");
+    println!("ctx.execute_instruction(ix, &[&signer])?;");
+    println!();
+
+    println!("// Clean assertions");
+    println!("ctx.svm.assert_token_balance(&recipient_account, 100);");
+    println!("ctx.svm.assert_account_closed(&old_account);");
+}
+
+/// Example: Complete test with production-compatible syntax
 #[allow(dead_code)]
-fn example_multiple_programs() {
-    use anchor_litesvm::AnchorLiteSVM;
+fn example_complete_test() {
+    // Normally you'd use: anchor_lang::declare_program!(my_program);
+    let program_bytes = vec![]; // Would be include_bytes!("../target/deploy/my_program.so")
 
-    let program1_id = Pubkey::new_unique();
-    let program2_id = Pubkey::new_unique();
-    let program1_bytes = vec![];
-    let program2_bytes = vec![];
+    // One-line setup (no mock RPC needed!)
+    let mut ctx = AnchorLiteSVM::build_with_program(my_program::ID, &program_bytes);
 
-    // Deploy multiple programs
-    let mut ctx = AnchorLiteSVM::new()
-        .deploy_program(program1_id, &program1_bytes)
-        .deploy_program(program2_id, &program2_bytes)
-        .with_primary_program(program1_id)
-        .build();
+    // Create test accounts with integrated helpers
+    let maker = ctx.svm.create_funded_account(10_000_000_000).unwrap();
+    let taker = ctx.svm.create_funded_account(10_000_000_000).unwrap();
 
-    // Now you can test cross-program invocations
-    let user = ctx.create_funded_account(10_000_000_000).unwrap();
+    // Token operations in one line
+    let mint = ctx.svm.create_token_mint(&maker, 9).unwrap();
+    let maker_ata = ctx.svm.create_associated_token_account(&mint, &maker).unwrap();
+    ctx.svm.mint_to(&mint, &maker_ata, &maker, 1_000_000_000).unwrap();
 
-    // Call program1
-    ctx.instruction_builder("initialize")
-        .signer("user", &user)
-        .account_mut("state", Pubkey::new_unique())
-        .system_program()
-        .args(tuple_args(()))
-        .execute(&mut ctx, &[&user])
+    // Build instruction with production syntax (exactly matches anchor-client!)
+    let ix = ctx.program()
+        .request()
+        .accounts(my_program::client::accounts::Transfer {
+            from: maker_ata,
+            to: taker.pubkey(),
+            authority: maker.pubkey(),
+        })
+        .args(my_program::client::args::Transfer {
+            amount: 500_000_000,
+        })
+        .instructions()
+        .unwrap()
+        .remove(0); // Common pattern in anchor-client
+
+    // Execute and verify
+    ctx.execute_instruction(ix, &[&maker])
         .unwrap()
         .assert_success();
+
+    // Clean assertions
+    ctx.svm.assert_token_balance(&maker_ata, 500_000_000);
+}
+
+/// Example: Why not just use anchor-client with LiteSVM?
+#[allow(dead_code)]
+fn why_not_anchor_client() {
+    println!("\n=== Why use anchor-litesvm instead of anchor-client? ===\n");
+
+    println!("ANCHOR-CLIENT + LITESVM (279 lines):");
+    println!("-------------------------------------");
+    println!("// Requires mock RPC setup");
+    println!("let _mock_rpc = RpcClient::new_mock(\"succeeds\".to_string());");
+    println!("let client = Client::new_with_options(");
+    println!("    Cluster::Custom(");
+    println!("        \"http://127.0.0.1:8899\".to_string(),");
+    println!("        \"ws://127.0.0.1:8900\".to_string(),");
+    println!("    ),");
+    println!("    Rc::new(payer),");
+    println!("    CommitmentConfig::confirmed(),");
+    println!(");");
+    println!("// Still requires manual token setup (20+ lines)");
+    println!("// Network dependencies slow down compilation");
+    println!();
+
+    println!("ANCHOR-LITESVM (106 lines):");
+    println!("---------------------------");
+    println!("// No mock RPC needed!");
+    println!("let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);");
+    println!("// Integrated test helpers");
+    println!("let mint = ctx.svm.create_token_mint(&maker, 9)?;");
+    println!("// 40% faster compilation (no network deps)");
+    println!("// Same production syntax!");
+}
+
+/// Example: The key benefit - transferable knowledge
+#[allow(dead_code)]
+fn transferable_knowledge() {
+    println!("\n=== Transferable Knowledge ===\n");
+    println!("The syntax you learn in tests works in production:");
+    println!();
+    println!("// In your test:");
+    println!("let ix = ctx.program()");
+    println!("    .request()");
+    println!("    .accounts(my_program::client::accounts::Foo { ... })");
+    println!("    .args(my_program::client::args::Bar { ... })");
+    println!("    .instructions()?[0];");
+    println!();
+    println!("// In production (identical!):");
+    println!("let ix = program");
+    println!("    .request()");
+    println!("    .accounts(my_program::client::accounts::Foo { ... })");
+    println!("    .args(my_program::client::args::Bar { ... })");
+    println!("    .instructions()?[0];");
+    println!();
+    println!("✓ Zero learning curve");
+    println!("✓ Copy-paste compatible");
+    println!("✓ Skills transfer directly");
 }

@@ -9,10 +9,10 @@ use solana_sdk::{
 };
 use litesvm_utils::TransactionResult;
 
-/// Wrapper around LiteSVM that provides Anchor-specific utilities for testing.
+/// Production-compatible testing context for Anchor programs.
 ///
-/// This struct maintains a reference to a LiteSVM instance and provides
-/// production-compatible anchor-client syntax without RPC overhead.
+/// Provides the exact same API as anchor-client but works directly with LiteSVM,
+/// eliminating RPC overhead while maintaining identical syntax for tests and production.
 pub struct AnchorContext {
     /// Direct access to the underlying LiteSVM instance
     pub svm: LiteSVM,
