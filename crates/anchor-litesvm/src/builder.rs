@@ -27,11 +27,12 @@ use solana_sdk::signature::{Keypair, Signer};
 /// // Or use the convenience method for single program
 /// let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 ///
-/// // Build instructions using the native builder
-/// let ix = ctx.instruction()
+/// // Build instructions using production-compatible syntax
+/// let ix = ctx.program()
+///     .request()
 ///     .accounts(...)
 ///     .args(...)
-///     .build();
+///     .instructions()?[0];
 /// ```
 pub struct AnchorLiteSVM {
     svm_builder: LiteSVMBuilder,

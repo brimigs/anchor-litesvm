@@ -36,8 +36,9 @@ fn test_escrow_with_anchor_litesvm() {
     );
     let vault = get_associated_token_address(&escrow_pda, &mint_a.pubkey());
 
-    // MAKE: Build instruction using native builder (no RPC overhead!)
-    let make_ix = ctx.instruction()
+    // MAKE: Build instruction using production-compatible syntax (no RPC overhead!)
+    let make_ix = ctx.program()
+        .request()
         .accounts(anchor_escrow::client::accounts::Make {
             maker: maker.pubkey(),
             escrow: escrow_pda,
@@ -54,7 +55,9 @@ fn test_escrow_with_anchor_litesvm() {
             receive: 500_000_000,  // 0.5 tokens
             amount: 1_000_000_000,  // 1 token
         })
-        .build();
+        .instructions()
+        .unwrap()
+        .remove(0);
 
     // Execute using the convenience method
     ctx.execute_instruction(make_ix, &[&maker])
@@ -66,11 +69,12 @@ fn test_escrow_with_anchor_litesvm() {
     ctx.svm.assert_token_balance(&vault, 1_000_000_000);
     ctx.svm.assert_token_balance(&maker_ata_a, 0);
 
-    // TAKE: Build instruction using native builder
+    // TAKE: Build instruction using production-compatible syntax
     let taker_ata_a = get_associated_token_address(&taker.pubkey(), &mint_a.pubkey());
     let maker_ata_b = get_associated_token_address(&maker.pubkey(), &mint_b.pubkey());
 
-    let take_ix = ctx.instruction()
+    let take_ix = ctx.program()
+        .request()
         .accounts(anchor_escrow::client::accounts::Take {
             taker: taker.pubkey(),
             maker: maker.pubkey(),
@@ -86,7 +90,9 @@ fn test_escrow_with_anchor_litesvm() {
             system_program: solana_sdk::system_program::id(),
         })
         .args(anchor_escrow::client::args::Take {})
-        .build();
+        .instructions()
+        .unwrap()
+        .remove(0);
 
     // Execute the take instruction
     ctx.execute_instruction(take_ix, &[&taker])

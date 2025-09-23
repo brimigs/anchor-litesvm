@@ -30,11 +30,12 @@
 //! let program_bytes = include_bytes!("../target/deploy/my_anchor_program.so");
 //! let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 //!
-//! // Build and execute Anchor instructions with native builder
-//! let ix = ctx.instruction()
+//! // Build and execute Anchor instructions with production-compatible syntax
+//! let ix = ctx.program()
+//!     .request()
 //!     .accounts(my_program::client::accounts::Transfer { ... })
 //!     .args(my_program::client::args::Transfer { amount: 100 })
-//!     .build();
+//!     .instructions()?[0];
 //!
 //! ctx.execute_instruction(ix, &[&signer]).unwrap();
 //!
@@ -43,17 +44,17 @@
 //! ```
 
 pub mod account;
-pub mod anchor_instruction_builder;
 pub mod builder;
 pub mod context;
 pub mod instruction;
+pub mod program;
 
 // Re-export main types for convenience
 pub use account::{get_anchor_account, get_anchor_account_unchecked, AccountError};
-pub use anchor_instruction_builder::AnchorInstructionBuilder;
 pub use builder::{AnchorLiteSVM, ProgramTestExt};
 pub use context::AnchorContext;
 pub use instruction::{build_anchor_instruction, calculate_anchor_discriminator};
+pub use program::{Program, RequestBuilder};
 
 // Re-export litesvm-utils functionality for convenience
 pub use litesvm_utils::{
