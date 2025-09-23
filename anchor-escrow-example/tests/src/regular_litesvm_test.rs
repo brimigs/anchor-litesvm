@@ -10,6 +10,7 @@ use spl_associated_token_account::get_associated_token_address;
 use borsh::BorshSerialize;
 use sha2::{Digest, Sha256};
 use solana_program_pack::Pack;
+use litesvm_token::{CreateMint, MintTo, spl_token};
 
 #[derive(Debug, BorshSerialize)]
 struct MakeArgs {
@@ -40,72 +41,34 @@ fn test_take_with_regular_litesvm() {
     svm.airdrop(&maker.pubkey(), 10_000_000_000).unwrap();
     svm.airdrop(&taker.pubkey(), 10_000_000_000).unwrap();
 
-    // Create two token mints
-    let mint_a = Keypair::new();
-    let mint_b = Keypair::new();
-
-    // Use litesvm-token to create mints
-    use litesvm_token::spl_token;
-
+    // Create two token mints using litesvm_token crate
     // Create mint A
-    let create_mint_a_ix = spl_token::instruction::initialize_mint(
-        &spl_token::id(),
-        &mint_a.pubkey(),
-        &maker.pubkey(),
-        None,
-        9, // decimals
-    ).unwrap();
+    let mint_a = CreateMint::new(&mut svm, &maker)
+        .decimals(9)
+        .send()
+        .unwrap();
 
     // Create mint B
-    let create_mint_b_ix = spl_token::instruction::initialize_mint(
-        &spl_token::id(),
-        &mint_b.pubkey(),
-        &maker.pubkey(),
-        None,
-        9, // decimals
-    ).unwrap();
-
-    // First create the mint accounts
-    let rent = svm.minimum_balance_for_rent_exemption(82);
-    let create_mint_a_account_ix = solana_sdk::system_instruction::create_account(
-        &maker.pubkey(),
-        &mint_a.pubkey(),
-        rent,
-        82,
-        &spl_token::id(),
-    );
-    let create_mint_b_account_ix = solana_sdk::system_instruction::create_account(
-        &maker.pubkey(),
-        &mint_b.pubkey(),
-        rent,
-        82,
-        &spl_token::id(),
-    );
-
-    // Create mints transaction
-    let tx = Transaction::new_signed_with_payer(
-        &[create_mint_a_account_ix, create_mint_a_ix, create_mint_b_account_ix, create_mint_b_ix],
-        Some(&maker.pubkey()),
-        &[&maker, &mint_a, &mint_b],
-        svm.latest_blockhash(),
-    );
-    svm.send_transaction(tx).unwrap();
+    let mint_b = CreateMint::new(&mut svm, &maker)
+        .decimals(9)
+        .send()
+        .unwrap();
 
     // Create maker's associated token account for mint_a
-    let maker_ata_a = get_associated_token_address(&maker.pubkey(), &mint_a.pubkey());
+    let maker_ata_a = get_associated_token_address(&maker.pubkey(), &mint_a);
     let create_maker_ata_a_ix = spl_associated_token_account::instruction::create_associated_token_account(
         &maker.pubkey(),
         &maker.pubkey(),
-        &mint_a.pubkey(),
+        &mint_a,
         &spl_token::id(),
     );
 
     // Create taker's associated token account for mint_b
-    let taker_ata_b = get_associated_token_address(&taker.pubkey(), &mint_b.pubkey());
+    let taker_ata_b = get_associated_token_address(&taker.pubkey(), &mint_b);
     let create_taker_ata_b_ix = spl_associated_token_account::instruction::create_associated_token_account(
         &taker.pubkey(),
         &taker.pubkey(),
-        &mint_b.pubkey(),
+        &mint_b,
         &spl_token::id(),
     );
 
@@ -117,33 +80,15 @@ fn test_take_with_regular_litesvm() {
     );
     svm.send_transaction(tx).unwrap();
 
-    // Mint tokens to maker's ATA (mint_a)
-    let mint_to_maker_ix = spl_token::instruction::mint_to(
-        &spl_token::id(),
-        &mint_a.pubkey(),
-        &maker_ata_a,
-        &maker.pubkey(),
-        &[],
-        1_000_000_000, // 1 token with 9 decimals
-    ).unwrap();
+    // Mint tokens to maker's ATA (mint_a) using litesvm_token
+    MintTo::new(&mut svm, &maker, &mint_a, &maker_ata_a, 1_000_000_000)
+        .send()
+        .unwrap();
 
-    // Mint tokens to taker's ATA (mint_b)
-    let mint_to_taker_ix = spl_token::instruction::mint_to(
-        &spl_token::id(),
-        &mint_b.pubkey(),
-        &taker_ata_b,
-        &maker.pubkey(), // maker is mint authority
-        &[],
-        500_000_000, // 0.5 tokens with 9 decimals
-    ).unwrap();
-
-    let tx = Transaction::new_signed_with_payer(
-        &[mint_to_maker_ix, mint_to_taker_ix],
-        Some(&maker.pubkey()),
-        &[&maker],
-        svm.latest_blockhash(),
-    );
-    svm.send_transaction(tx).unwrap();
+    // Mint tokens to taker's ATA (mint_b) using litesvm_token
+    MintTo::new(&mut svm, &maker, &mint_b, &taker_ata_b, 500_000_000)
+        .send()
+        .unwrap();
 
     // First, create the escrow with the make instruction
     let seed: u64 = 42;
@@ -152,7 +97,7 @@ fn test_take_with_regular_litesvm() {
         &program_id,
     );
 
-    let vault = get_associated_token_address(&escrow_pda, &mint_a.pubkey());
+    let vault = get_associated_token_address(&escrow_pda, &mint_a);
 
     // Build make instruction discriminator
     let mut hasher = Sha256::new();
@@ -179,8 +124,8 @@ fn test_take_with_regular_litesvm() {
         accounts: vec![
             AccountMeta::new(maker.pubkey(), true),  // maker
             AccountMeta::new(escrow_pda, false),      // escrow
-            AccountMeta::new_readonly(mint_a.pubkey(), false), // mint_a
-            AccountMeta::new_readonly(mint_b.pubkey(), false), // mint_b
+            AccountMeta::new_readonly(mint_a, false), // mint_a
+            AccountMeta::new_readonly(mint_b, false), // mint_b
             AccountMeta::new(maker_ata_a, false),     // maker_ata_a
             AccountMeta::new(vault, false),           // vault
             AccountMeta::new_readonly(spl_associated_token_account::id(), false), // associated_token_program
@@ -202,8 +147,8 @@ fn test_take_with_regular_litesvm() {
     println!("Escrow created successfully");
 
     // Now test the take instruction
-    let taker_ata_a = get_associated_token_address(&taker.pubkey(), &mint_a.pubkey());
-    let maker_ata_b = get_associated_token_address(&maker.pubkey(), &mint_b.pubkey());
+    let taker_ata_a = get_associated_token_address(&taker.pubkey(), &mint_a);
+    let maker_ata_b = get_associated_token_address(&maker.pubkey(), &mint_b);
 
     // Build take instruction discriminator
     let mut hasher = Sha256::new();
@@ -222,8 +167,8 @@ fn test_take_with_regular_litesvm() {
             AccountMeta::new(taker.pubkey(), true),   // taker
             AccountMeta::new(maker.pubkey(), false),  // maker
             AccountMeta::new(escrow_pda, false),      // escrow
-            AccountMeta::new_readonly(mint_a.pubkey(), false), // mint_a
-            AccountMeta::new_readonly(mint_b.pubkey(), false), // mint_b
+            AccountMeta::new_readonly(mint_a, false), // mint_a
+            AccountMeta::new_readonly(mint_b, false), // mint_b
             AccountMeta::new(vault, false),           // vault
             AccountMeta::new(taker_ata_a, false),     // taker_ata_a
             AccountMeta::new(taker_ata_b, false),     // taker_ata_b
@@ -273,7 +218,6 @@ fn test_take_with_regular_litesvm() {
             println!("Vault account closed successfully");
 
             // Check final token balances
-            use litesvm_token::spl_token;
 
             // Taker should have received tokens from mint_a
             let taker_ata_a_data = svm.get_account(&taker_ata_a).unwrap();
