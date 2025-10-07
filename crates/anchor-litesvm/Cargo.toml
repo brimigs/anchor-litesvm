@@ -1,6 +1,6 @@
 [package]
 name = "anchor-litesvm"
-version = "0.1.0"
+version = "0.1.1"
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
@@ -9,7 +9,7 @@ documentation = "https://docs.rs/anchor-litesvm"
 keywords = ["solana", "anchor", "litesvm", "testing", "blockchain"]
 
 [dependencies]
-litesvm-utils = { path = "../litesvm-utils" }
+litesvm-utils = { version = "0.1.0", path = "../litesvm-utils" }
 litesvm = { workspace = true }
 anchor-lang = { workspace = true }
 solana-sdk = { workspace = true }

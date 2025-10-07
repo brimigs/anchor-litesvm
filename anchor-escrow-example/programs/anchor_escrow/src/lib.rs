@@ -1,16 +1,17 @@
-#![allow(unexpected_cfgs)]
-
 use anchor_lang::prelude::*;
+
 pub mod errors;
 pub mod instructions;
-pub use instructions::*;
 pub mod state;
+
+pub use instructions::{Make, Refund, Take};
 
 declare_id!("8LTee82TkoqBoBjBAz2yAAKSj9ckr7zz5vMi6rJQTwhJ");
 
 #[program]
 pub mod anchor_escrow {
     use super::*;
+
     pub fn make(ctx: Context<Make>, seed: u64, receive: u64, amount: u64) -> Result<()> {
         instructions::make::handler(ctx, seed, receive, amount)
     }

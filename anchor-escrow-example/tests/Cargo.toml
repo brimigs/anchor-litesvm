@@ -5,7 +5,7 @@ description = "Created with Anchor"
 edition = "2021"
 
 [dependencies]
-anchor_escrow = { version = "0.1.0", path = "../programs/anchor_escrow" }
+# anchor_escrow = { version = "0.1.0", path = "../programs/anchor_escrow" }
 solana-sdk = "2.2.1"
 spl-token = "7.0.0"
 spl-associated-token-account = "6.0.0"

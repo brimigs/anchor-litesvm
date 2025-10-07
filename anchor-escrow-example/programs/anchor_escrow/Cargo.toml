@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "anchor_escrow"
 
 [features]
-default = []
+default = ["no-idl"]
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
