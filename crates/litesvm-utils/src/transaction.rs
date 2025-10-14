@@ -175,6 +175,173 @@ impl TransactionResult {
     pub fn inner(&self) -> &TransactionMetadata {
         &self.inner
     }
+
+    /// Assert that the transaction failed
+    ///
+    /// # Panics
+    ///
+    /// Panics if the transaction succeeded
+    ///
+    /// # Returns
+    ///
+    /// Returns self for chaining
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// result.assert_failure();
+    /// ```
+    pub fn assert_failure(&self) -> &Self {
+        assert!(
+            self.error.is_some(),
+            "Expected transaction to fail, but it succeeded.\nLogs:\n{}",
+            self.logs().join("\n")
+        );
+        self
+    }
+
+    /// Assert that the transaction failed with a specific error message
+    ///
+    /// # Arguments
+    ///
+    /// * `expected_error` - The expected error message (substring match)
+    ///
+    /// # Panics
+    ///
+    /// Panics if the transaction succeeded or failed with a different error
+    ///
+    /// # Returns
+    ///
+    /// Returns self for chaining
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// result.assert_error("insufficient funds");
+    /// ```
+    pub fn assert_error(&self, expected_error: &str) -> &Self {
+        match &self.error {
+            Some(error) => {
+                assert!(
+                    error.contains(expected_error),
+                    "Transaction failed with unexpected error.\nExpected substring: {}\nActual error: {}\nLogs:\n{}",
+                    expected_error,
+                    error,
+                    self.logs().join("\n")
+                );
+            }
+            None => {
+                panic!(
+                    "Expected transaction to fail with error containing '{}', but it succeeded.\nLogs:\n{}",
+                    expected_error,
+                    self.logs().join("\n")
+                );
+            }
+        }
+        self
+    }
+
+    /// Assert that the transaction failed with a specific error code
+    ///
+    /// This is useful for asserting Anchor custom errors.
+    ///
+    /// # Arguments
+    ///
+    /// * `error_code` - The expected error code number
+    ///
+    /// # Panics
+    ///
+    /// Panics if the transaction succeeded or failed with a different error code
+    ///
+    /// # Returns
+    ///
+    /// Returns self for chaining
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Assert that transaction failed with custom error code 6000
+    /// result.assert_error_code(6000);
+    /// ```
+    pub fn assert_error_code(&self, error_code: u32) -> &Self {
+        let error_code_str = format!("custom program error: 0x{:x}", error_code);
+        self.assert_error(&error_code_str)
+    }
+
+    /// Assert that the transaction failed with a specific Anchor error
+    ///
+    /// This checks for Anchor's error code format in the logs.
+    ///
+    /// # Arguments
+    ///
+    /// * `error_name` - The name of the Anchor error
+    ///
+    /// # Panics
+    ///
+    /// Panics if the transaction succeeded or the error wasn't found in logs
+    ///
+    /// # Returns
+    ///
+    /// Returns self for chaining
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Assert that transaction failed with Anchor error
+    /// result.assert_anchor_error("InsufficientFunds");
+    /// ```
+    pub fn assert_anchor_error(&self, error_name: &str) -> &Self {
+        self.assert_failure();
+
+        // Check if error name appears in logs
+        let found_in_logs = self.logs().iter().any(|log| log.contains(error_name));
+
+        // Also check the error message
+        let found_in_error = self.error
+            .as_ref()
+            .map(|e| e.contains(error_name))
+            .unwrap_or(false);
+
+        assert!(
+            found_in_logs || found_in_error,
+            "Expected Anchor error '{}' not found in transaction logs or error message.\nError: {:?}\nLogs:\n{}",
+            error_name,
+            self.error,
+            self.logs().join("\n")
+        );
+        self
+    }
+
+    /// Assert that the logs contain a specific error message
+    ///
+    /// Unlike `assert_error`, this only checks the logs, not the error field.
+    ///
+    /// # Arguments
+    ///
+    /// * `error_message` - The expected error message in logs
+    ///
+    /// # Panics
+    ///
+    /// Panics if the error message is not found in logs
+    ///
+    /// # Returns
+    ///
+    /// Returns self for chaining
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// result.assert_log_error("Transfer amount exceeds balance");
+    /// ```
+    pub fn assert_log_error(&self, error_message: &str) -> &Self {
+        assert!(
+            self.has_log(error_message),
+            "Expected error message '{}' not found in logs.\nLogs:\n{}",
+            error_message,
+            self.logs().join("\n")
+        );
+        self
+    }
 }
 
 impl fmt::Debug for TransactionResult {

@@ -253,6 +253,7 @@ name = "anchor-litesvm"
 version = "0.1.1"
 dependencies = [
  "anchor-lang",
+ "base64 0.22.1",
  "borsh 1.5.7",
  "litesvm",
  "litesvm-utils",

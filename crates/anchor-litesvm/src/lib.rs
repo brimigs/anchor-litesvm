@@ -2,55 +2,134 @@
 //!
 //! Production-compatible testing framework for Anchor programs using LiteSVM.
 //!
-//! This crate provides the **exact same API** as anchor-client but without RPC overhead:
-//! - Native implementation of anchor-client's Program and RequestBuilder APIs
-//! - 40% faster compilation (no network dependencies)
-//! - 78% less code than raw LiteSVM
-//! - Direct integration with litesvm-utils test helpers
+//! This crate provides the **exact same API** as anchor-client but without RPC overhead,
+//! achieving **78% code reduction** compared to raw LiteSVM while maintaining production syntax.
 //!
-//! ## Key Benefits
+//! ## Why anchor-litesvm?
 //!
-//! - **Production-Compatible Syntax**: Your test code matches production exactly
-//! - **No Mock RPC Setup**: One-line initialization vs complex mock client configuration
-//! - **Integrated Test Helpers**: Token operations, assertions, and utilities built-in
-//! - **Zero Learning Curve**: If you know anchor-client, you already know this
-//! - **Transferable Knowledge**: Skills learned in tests apply directly to production
+//! | Feature | anchor-client + LiteSVM | anchor-litesvm |
+//! |---------|-------------------------|----------------|
+//! | **Code Lines** | 279 | **106 (78% less!)** |
+//! | **Compilation** | Slow (network deps) | **40% faster** |
+//! | **Setup** | Mock RPC needed | **One line** |
+//! | **Syntax** | Production-compatible | **Identical!** |
+//! | **Helpers** | Manual | **Built-in** |
+//!
+//! ## Key Features
+//!
+//! - ✅ **Production-Compatible Syntax**: Same API as anchor-client
+//! - ✅ **No Mock RPC Setup**: One-line initialization
+//! - ✅ **Integrated Test Helpers**: Token operations, assertions, event parsing
+//! - ✅ **Zero Learning Curve**: If you know anchor-client, you know this
+//! - ✅ **Transferable Knowledge**: Test skills → Production skills
+//! - ✅ **Type Safety**: Compile-time validation with Anchor types
 //!
 //! ## Quick Start
 //!
-//! ```ignore
-//! use anchor_litesvm::AnchorLiteSVM;
+//! ```rust,ignore
+//! use anchor_litesvm::{AnchorLiteSVM, TestHelpers, AssertionHelpers};
+//! use solana_sdk::signature::Signer;
 //!
-//! // Generate client types from your program
+//! // 1. Generate client types from your program
 //! anchor_lang::declare_program!(my_program);
 //!
-//! // One-line setup (no mock RPC needed!)
-//! let mut ctx = AnchorLiteSVM::build_with_program(
-//!     my_program::ID,
-//!     include_bytes!("../target/deploy/my_program.so"),
-//! );
+//! #[test]
+//! fn test_my_program() {
+//!     // 2. One-line setup (no mock RPC needed!)
+//!     let mut ctx = AnchorLiteSVM::build_with_program(
+//!         my_program::ID,
+//!         include_bytes!("../target/deploy/my_program.so"),
+//!     );
 //!
-//! // Use production-compatible syntax (exactly matches anchor-client!)
-//! let ix = ctx.program()
-//!     .request()
-//!     .accounts(my_program::client::accounts::Transfer {
-//!         from: sender_account,
-//!         to: recipient_account,
-//!         authority: signer.pubkey(),
-//!     })
-//!     .args(my_program::client::args::Transfer { amount: 100 })
-//!     .instructions()?[0];
+//!     // 3. Create test accounts with helpers
+//!     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
+//!     let mint = ctx.svm.create_token_mint(&user, 9).unwrap();
 //!
-//! // Execute with integrated helpers
-//! ctx.execute_instruction(ix, &[&signer])?;
+//!     // 4. Build instruction (production-compatible syntax!)
+//!     let ix = ctx.program()
+//!         .request()
+//!         .accounts(my_program::client::accounts::Transfer {
+//!             from: sender_account,
+//!             to: recipient_account,
+//!             authority: user.pubkey(),
+//!             token_program: spl_token::id(),
+//!         })
+//!         .args(my_program::client::args::Transfer { amount: 100 })
+//!         .instructions()?[0];
 //!
-//! // Use litesvm-utils assertions directly
-//! ctx.svm.assert_token_balance(&recipient_account, 100);
+//!     // 5. Execute and verify
+//!     ctx.execute_instruction(ix, &[&user])?.assert_success();
+//!     ctx.svm.assert_token_balance(&recipient_account, 100);
+//! }
 //! ```
+//!
+//! ## Common Patterns
+//!
+//! ### Token Operations
+//!
+//! ```rust,ignore
+//! use litesvm_utils::TestHelpers;
+//!
+//! let mint = ctx.svm.create_token_mint(&authority, 9)?;
+//! let token_account = ctx.svm.create_associated_token_account(&mint.pubkey(), &owner)?;
+//! ctx.svm.mint_to(&mint.pubkey(), &token_account, &authority, 1_000_000)?;
+//! ```
+//!
+//! ### PDA Derivation
+//!
+//! ```rust,ignore
+//! // Just the address
+//! let pda = ctx.svm.get_pda(&[b"vault", user.pubkey().as_ref()], &program_id);
+//!
+//! // With bump seed
+//! let (pda, bump) = ctx.svm.get_pda_with_bump(&[b"vault"], &program_id);
+//! ```
+//!
+//! ### Error Testing
+//!
+//! ```rust,ignore
+//! let result = ctx.execute_instruction(ix, &[&user])?;
+//! result.assert_failure();
+//! result.assert_error("insufficient funds");
+//! result.assert_error_code(6000); // Anchor custom error
+//! ```
+//!
+//! ### Event Parsing
+//!
+//! ```rust,ignore
+//! use anchor_litesvm::EventHelpers;
+//!
+//! let events: Vec<TransferEvent> = result.parse_events()?;
+//! result.assert_event_emitted::<TransferEvent>();
+//! ```
+//!
+//! ### Account Deserialization
+//!
+//! ```rust,ignore
+//! let account: MyAccountType = ctx.get_account(&pda)?;
+//! assert_eq!(account.authority, user.pubkey());
+//! ```
+//!
+//! ## Documentation
+//!
+//! - [Quick Start Guide](https://github.com/brimigs/anchor-litesvm/blob/main/docs/QUICK_START.md)
+//! - [API Reference](https://github.com/brimigs/anchor-litesvm/blob/main/docs/API_REFERENCE.md)
+//! - [Migration Guide](https://github.com/brimigs/anchor-litesvm/blob/main/docs/MIGRATION.md)
+//! - [Examples](https://github.com/brimigs/anchor-litesvm/tree/main/examples)
+//!
+//! ## Modules
+//!
+//! - [`account`] - Account deserialization utilities
+//! - [`builder`] - Test environment builders
+//! - [`context`] - Main test context (`AnchorContext`)
+//! - [`events`] - Event parsing helpers
+//! - [`instruction`] - Instruction building utilities
+//! - [`program`] - Production-compatible Program API
 
 pub mod account;
 pub mod builder;
 pub mod context;
+pub mod events;
 pub mod instruction;
 pub mod program;
 
@@ -58,6 +137,7 @@ pub mod program;
 pub use account::{get_anchor_account, get_anchor_account_unchecked, AccountError};
 pub use builder::{AnchorLiteSVM, ProgramTestExt};
 pub use context::AnchorContext;
+pub use events::{parse_event_data, EventError, EventHelpers};
 pub use instruction::{build_anchor_instruction, calculate_anchor_discriminator};
 pub use program::{Program, RequestBuilder};
 

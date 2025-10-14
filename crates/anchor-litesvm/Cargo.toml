@@ -19,3 +19,4 @@ spl-associated-token-account = { workspace = true }
 borsh = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
+base64 = "0.22"
