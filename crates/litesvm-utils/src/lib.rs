@@ -3,12 +3,12 @@
 //! Framework-agnostic testing utilities for LiteSVM that dramatically simplify Solana program testing.
 //!
 //! This crate provides essential helpers that work with **any** Solana program (not just Anchor):
-//! - 🚀 Account creation and funding (one-liners)
-//! - 🪙 Token operations (mints, accounts, minting)
-//! - ✅ Transaction execution with rich result analysis
-//! - 🔍 Assertion helpers for testing account states
-//! - 🔑 PDA derivation utilities
-//! - ⏰ Clock and slot manipulation
+//! - Account creation and funding (one-liners)
+//! - Token operations (mints, accounts, minting)
+//! - Transaction execution with rich result analysis
+//! - Assertion helpers for testing account states
+//! - PDA derivation utilities
+//! - Clock and slot manipulation
 //!
 //! ## Why litesvm-utils?
 //!
@@ -24,19 +24,19 @@
 //!
 //! **After (litesvm-utils):**
 //! ```rust,ignore
-//! let mint = svm.create_token_mint(&authority, 9)?; // One line!
+//! let mint = svm.create_token_mint(&authority, 9)?; // One line
 //! ```
 //!
 //! ## Features
 //!
-//! ### ✅ Test Account Helpers
+//! ### Test Account Helpers
 //! Create funded accounts, mints, and token accounts in single calls:
 //! ```rust,ignore
 //! let user = svm.create_funded_account(10_000_000_000)?;
 //! let accounts = svm.create_funded_accounts(5, 1_000_000_000)?;
 //! ```
 //!
-//! ### ✅ Token Operations
+//! ### Token Operations
 //! One-line token operations without manual transaction building:
 //! ```rust,ignore
 //! let mint = svm.create_token_mint(&authority, 9)?;
@@ -44,7 +44,7 @@
 //! svm.mint_to(&mint.pubkey(), &token_account, &authority, 1_000_000)?;
 //! ```
 //!
-//! ### ✅ Transaction Helpers
+//! ### Transaction Helpers
 //! Execute transactions with automatic result analysis:
 //! ```rust,ignore
 //! let result = svm.send_instruction(ix, &[&signer])?;
@@ -52,7 +52,7 @@
 //! assert!(result.compute_units() < 200_000);
 //! ```
 //!
-//! ### ✅ Assertion Helpers
+//! ### Assertion Helpers
 //! Clean, readable test assertions:
 //! ```rust,ignore
 //! svm.assert_token_balance(&token_account, 1_000_000);
@@ -61,14 +61,14 @@
 //! svm.assert_account_closed(&closed_account);
 //! ```
 //!
-//! ### ✅ PDA Utilities
+//! ### PDA Utilities
 //! Convenient PDA derivation:
 //! ```rust,ignore
 //! let pda = svm.get_pda(&[b"vault", user.pubkey().as_ref()], &program_id);
 //! let (pda, bump) = svm.get_pda_with_bump(&[b"seed"], &program_id);
 //! ```
 //!
-//! ### ✅ Clock Manipulation
+//! ### Clock Manipulation
 //! Test time-based logic:
 //! ```rust,ignore
 //! let slot = svm.get_current_slot();
@@ -81,7 +81,7 @@
 //! use litesvm_utils::{LiteSVMBuilder, TestHelpers, AssertionHelpers, TransactionHelpers};
 //! use solana_program::pubkey::Pubkey;
 //!
-//! // 1. Initialize with one line!
+//! // 1. Initialize with one line
 //! let program_id = Pubkey::new_unique();
 //! let program_bytes = include_bytes!("../target/deploy/program.so");
 //! let mut svm = LiteSVMBuilder::build_with_program(program_id, program_bytes);

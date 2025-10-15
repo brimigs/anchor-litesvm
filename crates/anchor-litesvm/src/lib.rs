@@ -1,28 +1,28 @@
 //! # anchor-litesvm
 //!
-//! Production-compatible testing framework for Anchor programs using LiteSVM.
+//! Testing framework for Anchor programs using LiteSVM.
 //!
-//! This crate provides the **exact same API** as anchor-client but without RPC overhead,
-//! achieving **78% code reduction** compared to raw LiteSVM while maintaining production syntax.
+//! This crate provides a **simplified syntax similar to anchor-client** but without RPC overhead,
+//! achieving **78% code reduction** compared to raw LiteSVM.
 //!
 //! ## Why anchor-litesvm?
 //!
 //! | Feature | anchor-client + LiteSVM | anchor-litesvm |
 //! |---------|-------------------------|----------------|
-//! | **Code Lines** | 279 | **106 (78% less!)** |
+//! | **Code Lines** | 279 | **106 (78% less)** |
 //! | **Compilation** | Slow (network deps) | **40% faster** |
 //! | **Setup** | Mock RPC needed | **One line** |
-//! | **Syntax** | Production-compatible | **Identical!** |
+//! | **Syntax** | anchor-client | **Similar to anchor-client** |
 //! | **Helpers** | Manual | **Built-in** |
 //!
 //! ## Key Features
 //!
-//! - ✅ **Production-Compatible Syntax**: Same API as anchor-client
-//! - ✅ **No Mock RPC Setup**: One-line initialization
-//! - ✅ **Integrated Test Helpers**: Token operations, assertions, event parsing
-//! - ✅ **Zero Learning Curve**: If you know anchor-client, you know this
-//! - ✅ **Transferable Knowledge**: Test skills → Production skills
-//! - ✅ **Type Safety**: Compile-time validation with Anchor types
+//! - **Simplified Syntax**: Similar to anchor-client
+//! - **No Mock RPC Setup**: One-line initialization
+//! - **Integrated Test Helpers**: Token operations, assertions, event parsing
+//! - **Familiar API**: If you know anchor-client, you know this
+//! - **Transferable Knowledge**: Test skills apply to production
+//! - **Type Safety**: Compile-time validation with Anchor types
 //!
 //! ## Quick Start
 //!
@@ -35,7 +35,7 @@
 //!
 //! #[test]
 //! fn test_my_program() {
-//!     // 2. One-line setup (no mock RPC needed!)
+//!     // 2. One-line setup (no mock RPC needed)
 //!     let mut ctx = AnchorLiteSVM::build_with_program(
 //!         my_program::ID,
 //!         include_bytes!("../target/deploy/my_program.so"),
@@ -45,9 +45,8 @@
 //!     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
 //!     let mint = ctx.svm.create_token_mint(&user, 9).unwrap();
 //!
-//!     // 4. Build instruction (production-compatible syntax!)
+//!     // 4. Build instruction (simplified syntax - similar to anchor client)
 //!     let ix = ctx.program()
-//!         .request()
 //!         .accounts(my_program::client::accounts::Transfer {
 //!             from: sender_account,
 //!             to: recipient_account,
@@ -55,7 +54,7 @@
 //!             token_program: spl_token::id(),
 //!         })
 //!         .args(my_program::client::args::Transfer { amount: 100 })
-//!         .instructions()?[0];
+//!         .instruction()?;
 //!
 //!     // 5. Execute and verify
 //!     ctx.execute_instruction(ix, &[&user])?.assert_success();
@@ -124,7 +123,7 @@
 //! - [`context`] - Main test context (`AnchorContext`)
 //! - [`events`] - Event parsing helpers
 //! - [`instruction`] - Instruction building utilities
-//! - [`program`] - Production-compatible Program API
+//! - [`program`] - Simplified Program API
 
 pub mod account;
 pub mod builder;
@@ -139,7 +138,7 @@ pub use builder::{AnchorLiteSVM, ProgramTestExt};
 pub use context::AnchorContext;
 pub use events::{parse_event_data, EventError, EventHelpers};
 pub use instruction::{build_anchor_instruction, calculate_anchor_discriminator};
-pub use program::{Program, RequestBuilder};
+pub use program::{InstructionBuilder, Program};
 
 // Re-export litesvm-utils functionality for convenience
 pub use litesvm_utils::{

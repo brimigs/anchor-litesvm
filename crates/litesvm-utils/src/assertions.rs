@@ -127,10 +127,10 @@ impl AssertionHelpers for LiteSVM {
     fn assert_token_balance(&self, token_account: &Pubkey, expected: u64) {
         let account = self
             .get_account(token_account)
-            .expect(&format!("Token account {} not found", token_account));
+            .unwrap_or_else(|| panic!("Token account {} not found", token_account));
 
         let token_data = spl_token::state::Account::unpack(&account.data)
-            .expect(&format!("Failed to unpack token account {}", token_account));
+            .unwrap_or_else(|_| panic!("Failed to unpack token account {}", token_account));
 
         assert_eq!(
             token_data.amount, expected,
@@ -152,10 +152,10 @@ impl AssertionHelpers for LiteSVM {
     fn assert_mint_supply(&self, mint: &Pubkey, expected: u64) {
         let account = self
             .get_account(mint)
-            .expect(&format!("Mint {} not found", mint));
+            .unwrap_or_else(|| panic!("Mint {} not found", mint));
 
         let mint_data = spl_token::state::Mint::unpack(&account.data)
-            .expect(&format!("Failed to unpack mint {}", mint));
+            .unwrap_or_else(|_| panic!("Failed to unpack mint {}", mint));
 
         assert_eq!(
             mint_data.supply, expected,
@@ -167,7 +167,7 @@ impl AssertionHelpers for LiteSVM {
     fn assert_account_owner(&self, account: &Pubkey, expected_owner: &Pubkey) {
         let acc = self
             .get_account(account)
-            .expect(&format!("Account {} not found", account));
+            .unwrap_or_else(|| panic!("Account {} not found", account));
 
         assert_eq!(
             &acc.owner, expected_owner,
@@ -179,7 +179,7 @@ impl AssertionHelpers for LiteSVM {
     fn assert_account_data_len(&self, account: &Pubkey, expected_len: usize) {
         let acc = self
             .get_account(account)
-            .expect(&format!("Account {} not found", account));
+            .unwrap_or_else(|| panic!("Account {} not found", account));
 
         assert_eq!(
             acc.data.len(),
@@ -189,5 +189,205 @@ impl AssertionHelpers for LiteSVM {
             expected_len,
             acc.data.len()
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_helpers::TestHelpers;
+    use solana_sdk::signature::Signer;
+
+    #[test]
+    fn test_assert_account_closed_nonexistent() {
+        let svm = LiteSVM::new();
+        let nonexistent_account = Pubkey::new_unique();
+
+        // Should not panic for non-existent account
+        svm.assert_account_closed(&nonexistent_account);
+    }
+
+    #[test]
+    fn test_assert_account_exists() {
+        let mut svm = LiteSVM::new();
+        let account = svm.create_funded_account(1_000_000_000).unwrap();
+
+        // Should not panic for existing account
+        svm.assert_account_exists(&account.pubkey());
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected account")]
+    fn test_assert_account_exists_fails() {
+        let svm = LiteSVM::new();
+        let nonexistent = Pubkey::new_unique();
+
+        // Should panic for non-existent account
+        svm.assert_account_exists(&nonexistent);
+    }
+
+    #[test]
+    fn test_assert_token_balance() {
+        let mut svm = LiteSVM::new();
+        let authority = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&authority, 9).unwrap();
+        let token_account = svm
+            .create_associated_token_account(&mint.pubkey(), &authority)
+            .unwrap();
+
+        // Mint tokens
+        let amount = 1_000_000;
+        svm.mint_to(&mint.pubkey(), &token_account, &authority, amount)
+            .unwrap();
+
+        // Should not panic with correct balance
+        svm.assert_token_balance(&token_account, amount);
+    }
+
+    #[test]
+    #[should_panic(expected = "Token balance mismatch")]
+    fn test_assert_token_balance_fails() {
+        let mut svm = LiteSVM::new();
+        let authority = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&authority, 9).unwrap();
+        let token_account = svm
+            .create_associated_token_account(&mint.pubkey(), &authority)
+            .unwrap();
+
+        // Mint 1000 tokens
+        svm.mint_to(&mint.pubkey(), &token_account, &authority, 1000)
+            .unwrap();
+
+        // Should panic when expecting wrong balance
+        svm.assert_token_balance(&token_account, 2000);
+    }
+
+    #[test]
+    fn test_assert_sol_balance() {
+        let mut svm = LiteSVM::new();
+        let lamports = 5_000_000_000;
+        let account = svm.create_funded_account(lamports).unwrap();
+
+        // Should not panic with correct balance
+        svm.assert_sol_balance(&account.pubkey(), lamports);
+    }
+
+    #[test]
+    #[should_panic(expected = "SOL balance mismatch")]
+    fn test_assert_sol_balance_fails() {
+        let mut svm = LiteSVM::new();
+        let account = svm.create_funded_account(1_000_000_000).unwrap();
+
+        // Should panic when expecting wrong balance
+        svm.assert_sol_balance(&account.pubkey(), 2_000_000_000);
+    }
+
+    #[test]
+    fn test_assert_sol_balance_zero_for_nonexistent() {
+        let svm = LiteSVM::new();
+        let nonexistent = Pubkey::new_unique();
+
+        // Should not panic when expecting 0 for non-existent account
+        svm.assert_sol_balance(&nonexistent, 0);
+    }
+
+    #[test]
+    fn test_assert_mint_supply() {
+        let mut svm = LiteSVM::new();
+        let authority = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&authority, 9).unwrap();
+        let token_account = svm
+            .create_associated_token_account(&mint.pubkey(), &authority)
+            .unwrap();
+
+        // Mint tokens
+        let amount = 5_000_000;
+        svm.mint_to(&mint.pubkey(), &token_account, &authority, amount)
+            .unwrap();
+
+        // Should not panic with correct supply
+        svm.assert_mint_supply(&mint.pubkey(), amount);
+    }
+
+    #[test]
+    #[should_panic(expected = "Mint supply mismatch")]
+    fn test_assert_mint_supply_fails() {
+        let mut svm = LiteSVM::new();
+        let authority = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&authority, 9).unwrap();
+        let token_account = svm
+            .create_associated_token_account(&mint.pubkey(), &authority)
+            .unwrap();
+
+        // Mint 100 tokens
+        svm.mint_to(&mint.pubkey(), &token_account, &authority, 100)
+            .unwrap();
+
+        // Should panic when expecting wrong supply
+        svm.assert_mint_supply(&mint.pubkey(), 200);
+    }
+
+    #[test]
+    fn test_assert_mint_supply_zero_for_new_mint() {
+        let mut svm = LiteSVM::new();
+        let authority = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&authority, 9).unwrap();
+
+        // New mint should have 0 supply
+        svm.assert_mint_supply(&mint.pubkey(), 0);
+    }
+
+    #[test]
+    fn test_assert_account_owner() {
+        let mut svm = LiteSVM::new();
+        let owner = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&owner, 9).unwrap();
+
+        // Mint should be owned by token program
+        svm.assert_account_owner(&mint.pubkey(), &spl_token::id());
+    }
+
+    #[test]
+    #[should_panic(expected = "Account owner mismatch")]
+    fn test_assert_account_owner_fails() {
+        let mut svm = LiteSVM::new();
+        let owner = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&owner, 9).unwrap();
+
+        // Should panic when expecting wrong owner
+        let wrong_owner = Pubkey::new_unique();
+        svm.assert_account_owner(&mint.pubkey(), &wrong_owner);
+    }
+
+    #[test]
+    fn test_assert_account_data_len() {
+        let mut svm = LiteSVM::new();
+        let owner = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&owner, 9).unwrap();
+
+        // Mint account data is 82 bytes
+        svm.assert_account_data_len(&mint.pubkey(), 82);
+    }
+
+    #[test]
+    #[should_panic(expected = "Account data length mismatch")]
+    fn test_assert_account_data_len_fails() {
+        let mut svm = LiteSVM::new();
+        let owner = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&owner, 9).unwrap();
+
+        // Should panic when expecting wrong length
+        svm.assert_account_data_len(&mint.pubkey(), 100);
+    }
+
+    #[test]
+    fn test_assert_account_data_len_token_account() {
+        let mut svm = LiteSVM::new();
+        let owner = svm.create_funded_account(10_000_000_000).unwrap();
+        let mint = svm.create_token_mint(&owner, 9).unwrap();
+        let token_account = svm.create_token_account(&mint.pubkey(), &owner).unwrap();
+
+        // Token account data is 165 bytes
+        svm.assert_account_data_len(&token_account.pubkey(), 165);
     }
 }

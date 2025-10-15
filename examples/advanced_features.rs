@@ -10,8 +10,8 @@
 /// Note: These examples demonstrate the actual working API.
 /// For runnable tests, you would need compiled Anchor program bytes.
 
-use anchor_litesvm::{AnchorLiteSVM, TestHelpers, AssertionHelpers};
-use solana_sdk::signature::{Keypair, Signer};
+use anchor_litesvm::{AnchorLiteSVM, AssertionHelpers, TestHelpers};
+use solana_sdk::signature::Signer;
 use solana_program::pubkey::Pubkey;
 
 fn main() {
@@ -29,7 +29,7 @@ fn main() {
     println!("- TestHelpers trait - Account and token creation");
     println!("- AssertionHelpers trait - Account state verification");
     println!("- TransactionResult - Log analysis and debugging");
-    println!("- ctx.program().request() - Production-compatible instruction building");
+    println!("- ctx.program().accounts() - Simplified instruction building");
 
     println!("\nFor complete working examples, see the anchor-escrow-example tests.");
 }
@@ -58,17 +58,17 @@ fn example_token_operations() {
     let charlie_ata = ctx.svm.create_associated_token_account(&mint.pubkey(), &charlie).unwrap();
 
     // Mint tokens to Alice's account
-    ctx.svm.mint_to(&mint.pubkey(), &alice_ata, &alice, 1_000_000_000_000).unwrap();
+    ctx.svm.mint_to(&mint.pubkey(), &alice_ata, &alice, 1_000_000_000_000u64).unwrap();
 
     // Verify initial balance using AssertionHelpers trait
-    ctx.svm.assert_token_balance(&alice_ata, 1_000_000_000_000);
+    ctx.svm.assert_token_balance(&alice_ata, 1_000_000_000_000u64);
     ctx.svm.assert_token_balance(&bob_ata, 0);
     ctx.svm.assert_token_balance(&charlie_ata, 0);
 
     println!("✓ Token operations completed successfully");
     println!("  Created mint with {} decimals", 9);
     println!("  Created 3 token accounts");
-    println!("  Minted {} tokens to Alice", 1_000_000_000_000);
+    println!("  Minted {} tokens to Alice", 1_000_000_000_000u64);
 }
 
 /// Example: Working with PDAs (Program Derived Addresses)
@@ -107,17 +107,16 @@ fn example_pda_operations() {
     println!("  PDA: {}", pda);
     println!("  Bump: {}", bump);
 
-    // In a real test, you would now build an instruction using the production-compatible syntax:
+    // In a real test, you would now build an instruction using the simplified syntax:
     // let ix = ctx.program()
-    //     .request()
     //     .accounts(my_program::accounts::Initialize {
     //         vault: pda,
     //         user: user.pubkey(),
     //         system_program: system_program::id(),
     //     })
     //     .args(my_program::instruction::Initialize { seed, bump })
-    //     .instructions()
-    //     .unwrap()[0];
+    //     .instruction()
+    //     .unwrap();
     //
     // ctx.execute_instruction(ix, &[&user]).unwrap().assert_success();
 }
@@ -224,7 +223,7 @@ fn example_transaction_analysis() {
     let program_bytes = vec![];
 
     let mut ctx = AnchorLiteSVM::build_with_program(program_id, &program_bytes);
-    let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
+    let _user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
 
     // In a real scenario, you would execute an instruction and get a result:
     // let result = ctx.execute_instruction(ix, &[&user]).unwrap();
@@ -333,11 +332,10 @@ fn example_complete_workflow() {
     let token_account = ctx.svm.create_associated_token_account(&mint.pubkey(), &user).unwrap();
     println!("   ✓ Created user, mint, and token account\n");
 
-    // 2. Build instruction using production-compatible syntax
-    println!("2. Build instruction (production-compatible syntax)");
+    // 2. Build instruction using simplified syntax
+    println!("2. Build instruction (simplified syntax)");
     // In a real test with actual program:
     // let ix = ctx.program()
-    //     .request()
     //     .accounts(my_program::accounts::Transfer {
     //         from: token_account,
     //         to: recipient_account,
@@ -347,9 +345,9 @@ fn example_complete_workflow() {
     //     .args(my_program::instruction::Transfer {
     //         amount: 500_000_000,
     //     })
-    //     .instructions()
-    //     .unwrap()[0]; // or use .instruction() for single instruction
-    println!("   ✓ Instruction built with ctx.program().request()\n");
+    //     .instruction()
+    //     .unwrap();
+    println!("   ✓ Instruction built with ctx.program().accounts()\n");
 
     // 3. Execute
     println!("3. Execute instruction");
@@ -367,7 +365,7 @@ fn example_complete_workflow() {
     println!("=== Key Takeaways ===");
     println!("• Use AnchorLiteSVM::build_with_program() for setup");
     println!("• Access helpers via ctx.svm (TestHelpers, AssertionHelpers)");
-    println!("• Build instructions with ctx.program().request() (matches production!)");
+    println!("• Build instructions with ctx.program().accounts()");
     println!("• Execute with ctx.execute_instruction()");
     println!("• Verify with assertion helpers");
 }

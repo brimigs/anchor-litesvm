@@ -1,7 +1,7 @@
-//! Native implementation of anchor-client's Program API without RPC dependencies.
+//! Simplified instruction builder for LiteSVM testing without RPC overhead.
 //!
-//! This module provides a production-compatible syntax that matches anchor-client
-//! but works directly with LiteSVM without any network overhead.
+//! This module provides a clean, testing-focused API that removes unnecessary
+//! RPC-layer abstractions like `.request()` and `.remove(0)`.
 
 use anchor_lang::{InstructionData, ToAccountMetas};
 use solana_program::{
@@ -9,17 +9,16 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// A mock Program struct that mimics anchor-client's Program API
-/// but works natively with LiteSVM without RPC connections.
+/// A lightweight Program wrapper for building instructions in tests.
 ///
-/// This provides the same syntax as production code:
+/// Simplified API for testing without RPC layer abstractions:
 /// ```ignore
-/// let ix = program
-///     .request()
-///     .accounts(...)
-///     .args(...)
-///     .instructions()?[0];
+/// let ix = ctx.program()
+///     .accounts(my_program::accounts::Transfer { ... })
+///     .args(my_program::instruction::Transfer { ... })
+///     .instruction()?;
 /// ```
+#[derive(Copy, Clone)]
 pub struct Program {
     program_id: Pubkey,
 }
@@ -30,9 +29,27 @@ impl Program {
         Self { program_id }
     }
 
-    /// Start building a request, matching anchor-client's syntax
-    pub fn request(&self) -> RequestBuilder {
-        RequestBuilder::new(self.program_id)
+    /// Start building an instruction with accounts.
+    ///
+    /// This returns an `InstructionBuilder` that you can chain with `.args()` and `.instruction()`.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let ix = ctx.program()
+    ///     .accounts(my_program::accounts::Initialize {
+    ///         user: user.pubkey(),
+    ///         account: data_account,
+    ///         system_program: system_program::id(),
+    ///     })
+    ///     .args(my_program::instruction::Initialize { value: 42 })
+    ///     .instruction()?;
+    /// ```
+    pub fn accounts<T: ToAccountMetas>(self, accounts: T) -> InstructionBuilder {
+        InstructionBuilder {
+            program_id: self.program_id,
+            accounts: accounts.to_account_metas(None),
+            data: Vec::new(),
+        }
     }
 
     /// Get the program ID
@@ -41,82 +58,54 @@ impl Program {
     }
 }
 
-/// Builder for constructing requests, matching anchor-client's RequestBuilder API
-pub struct RequestBuilder {
+/// Builder for constructing instructions in a fluent, chainable manner.
+///
+/// You typically don't create this directly - use `program().accounts()` instead.
+pub struct InstructionBuilder {
     program_id: Pubkey,
     accounts: Vec<AccountMeta>,
     data: Vec<u8>,
 }
 
-impl RequestBuilder {
-    /// Create a new request builder
-    fn new(program_id: Pubkey) -> Self {
-        Self {
-            program_id,
-            accounts: Vec::new(),
-            data: Vec::new(),
-        }
-    }
-
-    /// Set the accounts for this instruction
-    ///
-    /// Matches anchor-client's syntax exactly:
-    /// ```ignore
-    /// .accounts(my_program::accounts::MyInstruction { ... })
-    /// ```
-    pub fn accounts<T: ToAccountMetas>(mut self, accounts: T) -> Self {
-        self.accounts = accounts.to_account_metas(None);
-        self
-    }
-
+impl InstructionBuilder {
     /// Set the instruction arguments
     ///
-    /// Matches anchor-client's syntax exactly:
+    /// # Example
     /// ```ignore
-    /// .args(my_program::instruction::MyArgs { ... })
+    /// .args(my_program::instruction::Transfer { amount: 1000 })
     /// ```
     pub fn args<T: InstructionData>(mut self, args: T) -> Self {
         self.data = args.data();
         self
     }
 
-    /// Build the instructions, returning a Result with a Vec to match anchor-client
+    /// Build and return the instruction.
     ///
-    /// This returns `Result<Vec<Instruction>>` to match anchor-client's API exactly.
-    /// In production, multiple instructions might be needed (e.g., for compute budget),
-    /// but in tests we typically just need one, hence the common pattern of `.instructions()?[0]`
-    pub fn instructions(self) -> Result<Vec<Instruction>, Box<dyn std::error::Error>> {
+    /// This is the final method in the chain that produces the `Instruction`.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let ix = ctx.program()
+    ///     .accounts(...)
+    ///     .args(...)
+    ///     .instruction()?;
+    /// ```
+    pub fn instruction(self) -> Result<Instruction, Box<dyn std::error::Error>> {
         if self.data.is_empty() {
-            return Err("No instruction data provided. Call .args() before .instructions()".into());
+            return Err("No instruction data provided. Call .args() before .instruction()".into());
         }
 
-        let instruction = Instruction {
+        Ok(Instruction {
             program_id: self.program_id,
             accounts: self.accounts,
             data: self.data,
-        };
-
-        Ok(vec![instruction])
-    }
-
-    /// Alternative method that returns a single instruction directly
-    ///
-    /// This is a convenience method not in anchor-client, but useful for tests
-    /// where you know there's only one instruction.
-    pub fn instruction(self) -> Result<Instruction, Box<dyn std::error::Error>> {
-        self.instructions().map(|mut ixs| ixs.remove(0))
+        })
     }
 }
 
-/// Type alias to match anchor-client's Program<Rc<Keypair>> pattern
-///
-/// While we don't actually need the Keypair generic, keeping it
-/// maintains syntax compatibility with anchor-client.
-pub type MockProgram = Program;
-
 #[cfg(test)]
 mod tests {
-    use super::{Program, RequestBuilder};
+    use super::Program;
     use anchor_lang::{prelude::*, InstructionData, ToAccountMetas};
     use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
 
@@ -153,40 +142,21 @@ mod tests {
     }
 
     #[test]
-    fn test_production_compatible_syntax() {
+    fn test_simplified_syntax() {
         let program_id = Pubkey::new_unique();
         let user = Pubkey::new_unique();
         let account = Pubkey::new_unique();
 
-        // This syntax exactly matches anchor-client!
+        // New simplified syntax for testing
         let program = Program::new(program_id);
         let ix = program
-            .request()
             .accounts(TestAccounts { user, account })
             .args(TestArgs { amount: 100 })
-            .instructions()
-            .unwrap()
-            .remove(0); // Common pattern in anchor-client usage
+            .instruction()
+            .unwrap();
 
         assert_eq!(ix.program_id, program_id);
         assert_eq!(ix.accounts.len(), 2);
         assert!(ix.data.len() > 8);
-    }
-
-    #[test]
-    fn test_convenience_method() {
-        let program_id = Pubkey::new_unique();
-        let user = Pubkey::new_unique();
-        let account = Pubkey::new_unique();
-
-        let program = Program::new(program_id);
-        let ix = program
-            .request()
-            .accounts(TestAccounts { user, account })
-            .args(TestArgs { amount: 100 })
-            .instruction() // Convenience method for single instruction
-            .unwrap();
-
-        assert_eq!(ix.program_id, program_id);
     }
 }

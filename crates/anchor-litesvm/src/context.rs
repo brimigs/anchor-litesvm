@@ -71,21 +71,19 @@ impl AnchorContext {
         }
     }
 
-    /// Get the program instance for building instructions with production-compatible syntax.
+    /// Get a copy of the program instance for building instructions.
     ///
-    /// This returns a Program that matches anchor-client's API exactly,
-    /// allowing the same syntax in tests and production.
+    /// Simplified API for testing without RPC overhead:
     ///
     /// # Example
     /// ```ignore
     /// let ix = ctx.program()
-    ///     .request()
     ///     .accounts(my_program::client::accounts::MyInstruction { ... })
     ///     .args(my_program::client::args::MyInstruction { ... })
-    ///     .instructions()?[0];
+    ///     .instruction()?;
     /// ```
-    pub fn program(&self) -> &Program {
-        &self.program
+    pub fn program(&self) -> Program {
+        self.program
     }
 
     /// Get the payer keypair
@@ -228,6 +226,9 @@ impl AnchorContext {
     /// Get an Anchor account without discriminator check
     ///
     /// Use this for accounts that don't have the standard Anchor discriminator.
+    ///
+    /// Note: `try_deserialize_unchecked` handles the discriminator internally,
+    /// so we pass the full account data.
     pub fn get_account_unchecked<T>(&self, address: &Pubkey) -> Result<T, AccountError>
     where
         T: AccountDeserialize,
@@ -236,7 +237,8 @@ impl AnchorContext {
             .get_account(address)
             .ok_or(AccountError::AccountNotFound(*address))?;
 
-        // Deserialize the account data without discriminator check
+        // Deserialize without discriminator check
+        // Note: try_deserialize_unchecked handles the discriminator internally
         let mut data = account_data.data.as_slice();
         T::try_deserialize_unchecked(&mut data)
             .map_err(|e| AccountError::DeserializationError(e.to_string()))

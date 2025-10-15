@@ -1,6 +1,6 @@
 # Migration Guide: From Raw LiteSVM to anchor-litesvm
 
-This guide helps you migrate your existing LiteSVM tests to `anchor-litesvm`, achieving up to **78% code reduction** while gaining production-compatible syntax.
+This guide helps you migrate your existing LiteSVM tests to `anchor-litesvm`.
 
 ## Table of Contents
 
@@ -13,20 +13,20 @@ This guide helps you migrate your existing LiteSVM tests to `anchor-litesvm`, ac
 
 ## Why Migrate?
 
-| Benefit | Description |
-|---------|-------------|
-| **78% Less Code** | Dramatically reduced boilerplate |
-| **Production Syntax** | Same API as anchor-client |
-| **Better Helpers** | Built-in token, PDA, and assertion helpers |
-| **Type Safety** | Compile-time validation with Anchor types |
-| **Easier Debugging** | Rich transaction result analysis |
+| Benefit                      | Description                                |
+| ---------------------------- | ------------------------------------------ |
+| **Less Code**                | Dramatically reduced boilerplate           |
+| **Simplified Syntax**        | Similar to anchor-client                   |
+| **Better Helpers**           | Built-in token, PDA, and assertion helpers |
+| **Type Safety**              | Compile-time validation with Anchor types  |
+| **Easier Debugging**         | Rich transaction result analysis           |
 
 ## Quick Migration Checklist
 
 - [ ] Add `anchor-litesvm` to dev-dependencies
 - [ ] Add `anchor_lang::declare_program!()` for your program
 - [ ] Replace `LiteSVM::new()` with `AnchorLiteSVM::build_with_program()`
-- [ ] Replace manual discriminator calculation with `.request()` builder
+- [ ] Replace manual discriminator calculation with simplified instruction builder
 - [ ] Replace manual token operations with helper methods
 - [ ] Replace manual assertions with helper methods
 - [ ] Use `ctx.svm` to access LiteSVM functionality
@@ -37,6 +37,7 @@ This guide helps you migrate your existing LiteSVM tests to `anchor-litesvm`, ac
 ### Step 1: Update Dependencies
 
 **Before:**
+
 ```toml
 [dev-dependencies]
 litesvm = "0.1"
@@ -44,6 +45,7 @@ solana-sdk = "1.18"
 ```
 
 **After:**
+
 ```toml
 [dev-dependencies]
 anchor-litesvm = "0.1"  # Includes litesvm
@@ -61,6 +63,7 @@ anchor_lang::declare_program!(my_program);
 ```
 
 This creates:
+
 - `my_program::ID` - Your program ID constant
 - `my_program::client::accounts::*` - Account structs
 - `my_program::client::args::*` - Instruction argument structs
@@ -68,6 +71,7 @@ This creates:
 ### Step 3: Update Test Setup
 
 **Before (Raw LiteSVM):**
+
 ```rust
 use litesvm::LiteSVM;
 
@@ -79,6 +83,7 @@ svm.add_program(
 ```
 
 **After (anchor-litesvm):**
+
 ```rust
 use anchor_litesvm::AnchorLiteSVM;
 
@@ -93,6 +98,7 @@ let mut ctx = AnchorLiteSVM::build_with_program(
 ### Step 4: Replace Manual Token Operations
 
 **Before (30+ lines):**
+
 ```rust
 // Create mint account
 let mint = Keypair::new();
@@ -128,6 +134,7 @@ svm.send_transaction(tx)?;
 ```
 
 **After (3 lines):**
+
 ```rust
 use litesvm_utils::TestHelpers;
 
@@ -141,6 +148,7 @@ ctx.svm.mint_to(&mint.pubkey(), &token_account, &authority, 1_000_000)?;
 ### Step 5: Replace Manual Discriminator Calculation
 
 **Before (10+ lines):**
+
 ```rust
 use sha2::{Digest, Sha256};
 
@@ -158,13 +166,13 @@ instruction_data.extend_from_slice(&borsh::to_vec(&args)?);
 ```
 
 **After (automatic):**
+
 ```rust
-// Discriminator is handled automatically by the request builder!
+// Discriminator is handled automatically by the instruction builder
 let ix = ctx.program()
-    .request()
     .accounts(my_program::client::accounts::Initialize { ... })
     .args(my_program::client::args::Initialize { ... })
-    .instructions()?[0];
+    .instruction()?;
 ```
 
 **Savings:** 10+ lines → 0 lines (automatic!)
@@ -172,6 +180,7 @@ let ix = ctx.program()
 ### Step 6: Replace Manual Instruction Building
 
 **Before (15+ lines):**
+
 ```rust
 use solana_program::instruction::{AccountMeta, Instruction};
 
@@ -194,16 +203,16 @@ let ix = Instruction {
 ```
 
 **After (4 lines):**
+
 ```rust
 let ix = ctx.program()
-    .request()
     .accounts(my_program::client::accounts::Initialize {
         data_account,
         user: user.pubkey(),
         system_program: system_program::id(),
     })
     .args(my_program::client::args::Initialize { value: 42 })
-    .instructions()?[0];
+    .instruction()?;
 ```
 
 **Savings:** 15 lines → 4 lines
@@ -212,6 +221,7 @@ let ix = ctx.program()
 ### Step 7: Replace Manual Assertions
 
 **Before:**
+
 ```rust
 // Check account exists
 let account = svm.get_account(&pubkey).expect("Account should exist");
@@ -227,6 +237,7 @@ assert_eq!(account.lamports, 10_000_000_000, "Wrong SOL balance");
 ```
 
 **After:**
+
 ```rust
 use litesvm_utils::AssertionHelpers;
 
@@ -242,16 +253,17 @@ ctx.svm.assert_sol_balance(&user_pubkey, 10_000_000_000);
 
 ### Account Creation
 
-| Operation | Raw LiteSVM | anchor-litesvm | Savings |
-|-----------|-------------|----------------|---------|
-| **Funded account** | Manual airdrop + keypair | `ctx.svm.create_funded_account(lamports)` | 90% |
-| **Token mint** | 30+ lines | `ctx.svm.create_token_mint(&auth, decimals)` | 95% |
-| **Token account** | 20+ lines | `ctx.svm.create_associated_token_account(&mint, &owner)` | 95% |
-| **Mint tokens** | 15+ lines | `ctx.svm.mint_to(&mint, &account, &auth, amount)` | 93% |
+| Operation          | Raw LiteSVM              | anchor-litesvm                                           | Savings |
+| ------------------ | ------------------------ | -------------------------------------------------------- | ------- |
+| **Funded account** | Manual airdrop + keypair | `ctx.svm.create_funded_account(lamports)`                | 90%     |
+| **Token mint**     | 30+ lines                | `ctx.svm.create_token_mint(&auth, decimals)`             | 95%     |
+| **Token account**  | 20+ lines                | `ctx.svm.create_associated_token_account(&mint, &owner)` | 95%     |
+| **Mint tokens**    | 15+ lines                | `ctx.svm.mint_to(&mint, &account, &auth, amount)`        | 93%     |
 
 ### PDA Operations
 
 **Before:**
+
 ```rust
 use solana_program::pubkey::Pubkey;
 
@@ -262,6 +274,7 @@ let (pda, bump) = Pubkey::find_program_address(
 ```
 
 **After:**
+
 ```rust
 // Just the PDA
 let pda = ctx.svm.get_pda(&[b"vault", user.pubkey().as_ref()], &program_id);
@@ -273,6 +286,7 @@ let (pda, bump) = ctx.svm.get_pda_with_bump(&[b"vault", user.pubkey().as_ref()],
 ### Transaction Execution
 
 **Before:**
+
 ```rust
 let tx = Transaction::new_signed_with_payer(
     &[ix],
@@ -288,6 +302,7 @@ match svm.send_transaction(tx) {
 ```
 
 **After:**
+
 ```rust
 let result = ctx.execute_instruction(ix, &[&payer])?;
 result.assert_success();
@@ -300,6 +315,7 @@ assert!(result.has_log("Success"));
 ### Error Testing
 
 **Before:**
+
 ```rust
 let tx = Transaction::new_signed_with_payer(/*...*/);
 let result = svm.send_transaction(tx);
@@ -310,6 +326,7 @@ assert!(error_string.contains("InsufficientFunds"));
 ```
 
 **After:**
+
 ```rust
 let result = ctx.execute_instruction(ix, &[&payer])?;
 result.assert_failure();
@@ -419,9 +436,8 @@ mod tests {
             &anchor_escrow::ID,
         );
 
-        // Build instruction (production syntax!)
+        // Build instruction (simplified syntax - similar to anchor client)
         let make_ix = ctx.program()
-            .request()
             .accounts(anchor_escrow::client::accounts::Make {
                 maker: maker.pubkey(),
                 escrow: escrow_pda,
@@ -438,8 +454,8 @@ mod tests {
                 receive: 500_000_000,
                 amount: 1_000_000_000,
             })
-            .instructions()
-            .unwrap()[0];
+            .instruction()
+            .unwrap();
 
         // Execute (1 line!)
         ctx.execute_instruction(make_ix, &[&maker])
@@ -459,11 +475,13 @@ mod tests {
 ### Issue 1: Missing `declare_program!`
 
 **Error:**
+
 ```
 error: cannot find `client` in `my_program`
 ```
 
 **Solution:**
+
 ```rust
 // Add this at the top of your test file
 anchor_lang::declare_program!(my_program);
@@ -472,28 +490,32 @@ anchor_lang::declare_program!(my_program);
 ### Issue 2: Wrong Account Paths
 
 **Error:**
+
 ```
 error: no variant named `Transfer` found for enum `my_program::instruction`
 ```
 
 **Solution:**
+
 ```rust
-// ❌ Wrong - using instruction types
+// Wrong - using instruction types
 .accounts(my_program::instruction::Transfer { ... })
 
-// ✓ Correct - using client accounts
+// Correct - using client accounts
 .accounts(my_program::client::accounts::Transfer { ... })
 ```
 
 ### Issue 3: Accessing LiteSVM
 
 **Before:**
+
 ```rust
 let mut svm = LiteSVM::new();
 svm.get_account(&pubkey);
 ```
 
 **After:**
+
 ```rust
 let mut ctx = AnchorLiteSVM::build_with_program(/*...*/);
 ctx.svm.get_account(&pubkey);  // Access via ctx.svm
@@ -502,12 +524,14 @@ ctx.svm.get_account(&pubkey);  // Access via ctx.svm
 ### Issue 4: Transaction Building
 
 **Before:**
+
 ```rust
 let tx = Transaction::new_signed_with_payer(/*...*/);
 svm.send_transaction(tx)?;
 ```
 
 **After:**
+
 ```rust
 // Use the helper method
 ctx.execute_instruction(ix, &[&signer])?;
@@ -518,23 +542,17 @@ ctx.execute_instructions(vec![ix1, ix2], &[&signer])?;
 
 ## Migration Benefits Summary
 
-| Aspect | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| **Lines of Code** | 493 | 106 | **78% reduction** |
-| **Setup** | 20+ lines | 1 line | **95% reduction** |
-| **Token Operations** | 65+ lines | 3 lines | **95% reduction** |
-| **Instruction Building** | 25+ lines | 4 lines | **84% reduction** |
-| **Assertions** | 10+ lines | 1 line | **90% reduction** |
-| **Compilation Time** | Slower | **40% faster** | Major improvement |
-| **Type Safety** | Manual | **Compile-time** | Catches errors early |
-| **Production Sync** | Different | **Identical** | Learn once, use everywhere |
-
-## Next Steps
-
-1. **Start Small**: Migrate one test at a time
-2. **Use Examples**: Reference [anchor-escrow-example](../anchor-escrow-example/tests/src/anchor_litesvm_test.rs)
-3. **Check Documentation**: See [QUICK_START.md](QUICK_START.md) and [API_REFERENCE.md](API_REFERENCE.md)
-4. **Ask for Help**: Open an issue if you get stuck
+| Aspect                   | Before                   | After                                 | Improvement                |
+| ------------------------ | ------------------------ | ------------------------------------- | -------------------------- |
+| **Lines of Code**        | 493                      | 106                                   | **78% reduction**          |
+| **Setup**                | 20+ lines                | 1 line                                | **95% reduction**          |
+| **Token Operations**     | 65+ lines                | 3 lines                               | **95% reduction**          |
+| **Instruction Building** | 25+ lines                | 4 lines                               | **84% reduction**          |
+| **Account Ordering**     | Manual Vec (error-prone) | **Named structs (order-independent)** | Zero ordering bugs!        |
+| **Assertions**           | 10+ lines                | 1 line                                | **90% reduction**          |
+| **Compilation Time**     | Slower                   | **40% faster**                        | Major improvement          |
+| **Type Safety**          | Manual                   | **Compile-time**                      | Catches errors early       |
+| **Syntax Similarity**    | Different                | **Similar to anchor-client**          | Learn once, use everywhere |
 
 ## Additional Resources
 
@@ -544,5 +562,3 @@ ctx.execute_instructions(vec![ix1, ix2], &[&signer])?;
 - [Working Tests](../anchor-escrow-example/tests/) - Real-world test examples
 
 ---
-
-Happy migrating! The effort is worth it - you'll end up with cleaner, more maintainable tests. 🚀

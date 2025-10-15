@@ -164,3 +164,75 @@ impl ProgramTestExt for LiteSVM {
         self.add_program(program_id, program_bytes);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_builder_new() {
+        let builder = LiteSVMBuilder::new();
+        let _svm = builder.build();
+        // Should successfully create a new LiteSVM instance
+    }
+
+    #[test]
+    fn test_builder_default() {
+        let builder = LiteSVMBuilder::default();
+        let _svm = builder.build();
+        // Default should work the same as new()
+    }
+
+    #[test]
+    fn test_builder_deploy_single_program() {
+        let program_id = Pubkey::new_unique();
+        let program_bytes = vec![1, 2, 3, 4];
+
+        // Test that builder fluent API works - don't call build() to avoid validation
+        let mut builder = LiteSVMBuilder::new();
+        builder = builder.deploy_program(program_id, &program_bytes);
+
+        // Verify the program was added to the builder
+        assert_eq!(builder.programs.len(), 1);
+        assert_eq!(builder.programs[0].0, program_id);
+    }
+
+    #[test]
+    fn test_builder_deploy_multiple_programs() {
+        let program_id1 = Pubkey::new_unique();
+        let program_id2 = Pubkey::new_unique();
+        let program_bytes = vec![1, 2, 3, 4];
+
+        // Test that builder accepts multiple programs
+        let builder = LiteSVMBuilder::new()
+            .deploy_program(program_id1, &program_bytes)
+            .deploy_program(program_id2, &program_bytes);
+
+        // Verify both programs were added
+        assert_eq!(builder.programs.len(), 2);
+    }
+
+    #[test]
+    fn test_build_with_programs_empty_list() {
+        let programs: Vec<(Pubkey, &[u8])> = vec![];
+        let _svm = LiteSVMBuilder::build_with_programs(&programs);
+        // Should not panic with empty program list
+    }
+
+    #[test]
+    fn test_builder_chaining() {
+        let program_id1 = Pubkey::new_unique();
+        let program_id2 = Pubkey::new_unique();
+        let program_id3 = Pubkey::new_unique();
+        let program_bytes = vec![1, 2, 3, 4];
+
+        // Test that builder methods can be chained
+        let builder = LiteSVMBuilder::new()
+            .deploy_program(program_id1, &program_bytes)
+            .deploy_program(program_id2, &program_bytes)
+            .deploy_program(program_id3, &program_bytes);
+
+        // Verify all 3 programs were added
+        assert_eq!(builder.programs.len(), 3);
+    }
+}

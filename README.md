@@ -1,6 +1,6 @@
 # anchor-litesvm Workspace
 
-Production-compatible testing framework for Solana programs using LiteSVM, with **78% less code** than raw LiteSVM.
+Testing framework for Solana programs using LiteSVM, with **78% less code** than raw LiteSVM.
 
 [![Crates.io](https://img.shields.io/crates/v/anchor-litesvm.svg)](https://crates.io/crates/anchor-litesvm)
 [![Documentation](https://docs.rs/anchor-litesvm/badge.svg)](https://docs.rs/anchor-litesvm)
@@ -25,7 +25,7 @@ anchor_lang::declare_program!(my_program);
 
 #[test]
 fn test_my_program() {
-    // 1. One-line setup - no mock RPC!
+    // 1. One-line setup - no mock RPC
     let mut ctx = AnchorLiteSVM::build_with_program(
         my_program::ID,
         include_bytes!("../target/deploy/my_program.so"),
@@ -35,9 +35,8 @@ fn test_my_program() {
     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
     let mint = ctx.svm.create_token_mint(&user, 9).unwrap();
 
-    // 3. Build instruction (production-compatible syntax!)
+    // 3. Build instruction (simplified syntax - similar to anchor client)
     let ix = ctx.program()
-        .request()
         .accounts(my_program::client::accounts::Initialize {
             user: user.pubkey(),
             mint: mint.pubkey(),
@@ -46,8 +45,8 @@ fn test_my_program() {
         .args(my_program::client::args::Initialize {
             amount: 1_000_000
         })
-        .instructions()
-        .unwrap()[0];
+        .instruction()
+        .unwrap();
 
     // 4. Execute and verify
     ctx.execute_instruction(ix, &[&user])
@@ -58,31 +57,30 @@ fn test_my_program() {
 }
 ```
 
-**That's it!** 🎉 [See full tutorial →](docs/QUICK_START.md)
+[See full tutorial](docs/QUICK_START.md)
 
 ## Crate Structure
 
 ### `anchor-litesvm`
 
-Anchor-specific integration with **production-compatible syntax**:
-- ✅ Native implementation of anchor-client API (no RPC overhead)
-- ✅ **Exact same syntax** in tests and production code
-- ✅ Automatic discriminator and serialization handling
-- ✅ Direct integration with litesvm-utils helpers
-- ✅ 40% faster compilation (no network dependencies)
+Anchor-specific integration with simplified syntax similar to anchor-client:
+- Native implementation of anchor-client API (no RPC overhead)
+- Similar syntax in tests and production code
+- Automatic discriminator and serialization handling
+- Direct integration with litesvm-utils helpers
+- 40% faster compilation (no network dependencies)
 
 ```rust
 use anchor_litesvm::AnchorLiteSVM;
 
-// Production-compatible syntax without RPC!
+// Simplified syntax without RPC layer
 let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 
-// Exactly matches anchor-client syntax - learn once, use everywhere!
+// Similar to anchor-client syntax - learn once, use everywhere
 let ix = ctx.program()
-    .request()
     .accounts(my_program::client::accounts::Transfer { from, to, authority })
     .args(my_program::client::args::Transfer { amount })
-    .instructions()?[0];
+    .instruction()?;
 
 ctx.execute_instruction(ix, &[&signer])?;
 ```
@@ -127,8 +125,8 @@ litesvm-utils = "0.1"
 | **Compilation Time** | Slow (network deps) | **40% faster** | No reqwest/tokio |
 | **Setup Complexity** | Mock RPC setup needed | **One line** | Zero config |
 | **Test Helpers** | Manual token setup | **Built-in** | Automatic |
-| **Syntax Compatibility** | ✅ Production syntax | ✅ **Identical** | Transferable |
-| **Learning Curve** | Medium | **Zero** | Same as production |
+| **Syntax Compatibility** | anchor-client | **Similar** | Transferable |
+| **Learning Curve** | Medium | **Low** | Similar to anchor-client |
 
 ### Detailed Comparison
 
@@ -145,7 +143,7 @@ let client = Client::new_with_options(
 );
 // ... still need manual token operations
 
-// anchor-litesvm (one line!)
+// anchor-litesvm (one line)
 let mut ctx = AnchorLiteSVM::build_with_program(program_id, program_bytes);
 ```
 
@@ -159,7 +157,7 @@ let create_account_ix = system_instruction::create_account(/*...*/);
 let init_mint_ix = spl_token::instruction::initialize_mint(/*...*/);
 // ... transaction building, signing, sending
 
-// anchor-litesvm (one line!)
+// anchor-litesvm (one line)
 let mint = ctx.svm.create_token_mint(&authority, 9)?;
 ```
 
@@ -286,7 +284,6 @@ fn test_escrow_complete_flow() {
 
     // Build and execute MAKE instruction
     let make_ix = ctx.program()
-        .request()
         .accounts(anchor_escrow::client::accounts::Make {
             maker: maker.pubkey(),
             escrow: escrow_pda,
@@ -299,8 +296,8 @@ fn test_escrow_complete_flow() {
             receive: 500_000_000,
             amount: 1_000_000_000,
         })
-        .instructions()
-        .unwrap()[0];
+        .instruction()
+        .unwrap();
 
     ctx.execute_instruction(make_ix, &[&maker])
         .unwrap()
@@ -312,23 +309,71 @@ fn test_escrow_complete_flow() {
 }
 ```
 
-[See full escrow example →](anchor-escrow-example/tests/src/anchor_litesvm_test.rs)
+[See full escrow example →](https://github.com/brimigs/anchor-escrow-with-litesvm)
 
 ## Key Features
 
-### ✅ Production-Compatible Syntax
-The syntax is **identical** to anchor-client, making your test knowledge directly transferable:
+### No More Account Ordering Headaches
+
+The number one pain point in Solana testing - completely eliminated.
+
+In raw LiteSVM, you must manually order accounts in a `Vec<AccountMeta>` matching your program's exact definition. Get the order wrong and your transaction fails or, worse, uses the wrong accounts.
 
 ```rust
-// This exact code works in both tests AND production!
-let ix = program
-    .request()
-    .accounts(my_program::client::accounts::Transfer { from, to, authority })
-    .args(my_program::client::args::Transfer { amount })
-    .instructions()?[0];
+// Raw LiteSVM - Order matters
+let instruction = Instruction {
+    program_id,
+    accounts: vec![
+        AccountMeta::new(maker.pubkey(), true),  // MUST BE POSITION 0
+        AccountMeta::new(escrow_pda, false),      // MUST BE POSITION 1
+        AccountMeta::new_readonly(mint_a, false), // MUST BE POSITION 2
+        AccountMeta::new_readonly(mint_b, false), // MUST BE POSITION 3
+        AccountMeta::new(maker_ata_a, false),     // MUST BE POSITION 4
+        AccountMeta::new(vault, false),           // MUST BE POSITION 5
+        // ... if you swap any of these, your tx fails
+    ],
+    data: instruction_data,
+};
 ```
 
-### ✅ Comprehensive Test Helpers
+```rust
+// anchor-litesvm - Order does not matter, named fields = type-safe
+let ix = ctx.program()
+    .accounts(my_program::client::accounts::Make {
+        // You can put these in ANY order - it just works
+        maker: maker.pubkey(),
+        vault,
+        mint_a: mint_a.pubkey(),
+        escrow: escrow_pda,  // Swapped order - no problem
+        maker_ata_a,
+        mint_b: mint_b.pubkey(),
+        // ... compiler ensures all required accounts are present
+        associated_token_program: spl_associated_token_account::id(),
+        token_program: spl_token::id(),
+        system_program: solana_sdk::system_program::id(),
+    })
+    .args(my_program::client::args::Make { seed, receive, amount })
+    .instruction()?;
+```
+
+**How it works:**
+- `anchor_lang::declare_program()` generates account structs implementing `ToAccountMetas`
+- The trait automatically arranges accounts in the correct order based on your program definition
+- Compiler validates all required accounts are present - no runtime surprises
+- Refactor-safe: if your program changes account order, tests will not compile until fixed
+
+### Simplified Syntax Similar to Anchor Client
+The syntax is similar to anchor-client, making your test knowledge directly transferable:
+
+```rust
+// This code pattern works in both tests and production
+let ix = program
+    .accounts(my_program::client::accounts::Transfer { from, to, authority })
+    .args(my_program::client::args::Transfer { amount })
+    .instruction()?;
+```
+
+### Comprehensive Test Helpers
 
 ```rust
 // Account creation
@@ -349,7 +394,7 @@ let slot = ctx.svm.get_current_slot();
 ctx.svm.advance_slot(100);
 ```
 
-### ✅ Rich Assertions
+### Rich Assertions
 
 ```rust
 // Account state
@@ -369,7 +414,7 @@ assert!(result.has_log("Success"));
 assert!(result.compute_units() < 200_000);
 ```
 
-### ✅ Transaction Debugging
+### Transaction Debugging
 
 ```rust
 let result = ctx.execute_instruction(ix, &[&user]).unwrap();
@@ -404,7 +449,6 @@ cargo run --example advanced_features
 Available examples:
 - `basic_usage.rs` - Simple introduction to the API
 - `advanced_features.rs` - Advanced patterns and capabilities
-- `workspace_demo.rs` - Working with multiple programs
 
 ## Testing
 
@@ -424,12 +468,12 @@ cd anchor-escrow-example && cargo test
 
 **Compilation Speed:**
 - anchor-client: ~45s clean build
-- anchor-litesvm: ~27s clean build (**40% faster!**)
+- anchor-litesvm: ~27s clean build (**40% faster**)
 
 **Code Reduction:**
 - Raw LiteSVM: 493 lines (escrow example)
 - anchor-client + LiteSVM: 279 lines
-- anchor-litesvm: **106 lines (78% reduction!)**
+- anchor-litesvm: **106 lines (78% reduction)**
 
 ## Comparison Table
 
@@ -441,13 +485,13 @@ cd anchor-escrow-example && cargo test
 | Discriminator handling | Manual | Automatic | **Automatic** |
 | Serialization | Manual | Automatic | **Automatic** |
 | Test helpers | None | Limited | **Comprehensive** |
-| Production syntax | ❌ | ✅ | **✅** |
+| Similar syntax | No | Yes | **Yes** |
 | Compilation time | Fast | Slow | **Fast** |
 | Learning curve | High | Medium | **Low** |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
+Contributions are welcome. Please feel free to submit issues, feature requests, or pull requests.
 
 ## License
 
@@ -465,4 +509,4 @@ Built on top of [LiteSVM](https://github.com/LiteSVM/litesvm), a fast and lightw
 
 ---
 
-**Made with ❤️ for the Solana community**
+Made for the Solana community
