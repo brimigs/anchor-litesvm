@@ -1,0 +1,31 @@
+[package]
+name = "anchor-litesvm-compat"
+version = "0.4.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Version anti-corruption boundary over the LiteSVM runtime seam for anchor-litesvm"
+publish = false
+
+[lints]
+workspace = true
+
+[dependencies]
+litesvm = { workspace = true }
+litesvm-cpi-tree = { workspace = true }
+solana-account = { workspace = true }
+solana-hash = { workspace = true }
+solana-keypair = { workspace = true }
+solana-message = { workspace = true }
+solana-signature = { workspace = true }
+solana-signer = { workspace = true }
+# `wincode` gates Transaction's constructors and signers (new_signed_with_payer,
+# sign) in solana-transaction 4.x. Our code reaches them through the re-exported
+# Transaction, so declare the feature here rather than riding litesvm's transitive
+# activation, which a semver-compatible litesvm patch could drop.
+solana-transaction = { workspace = true, features = ["wincode"] }
+
+[features]
+# Passthrough to litesvm's precompiles, so litesvm-utils enables them through
+# this boundary instead of naming litesvm directly.
+precompiles = ["litesvm/precompiles"]

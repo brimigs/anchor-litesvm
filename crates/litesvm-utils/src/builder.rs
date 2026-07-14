@@ -3,7 +3,7 @@
 //! This module provides a fluent API for setting up test environments
 //! with automatic program deployment and configuration.
 
-use litesvm::LiteSVM;
+use anchor_litesvm_compat::LiteSVM;
 use solana_program::pubkey::Pubkey;
 
 /// Builder for creating a LiteSVM instance with programs pre-deployed
@@ -29,6 +29,7 @@ use solana_program::pubkey::Pubkey;
 pub struct LiteSVMBuilder {
     svm: LiteSVM,
     programs: Vec<(Pubkey, Vec<u8>)>,
+    start_slot: Option<u64>,
 }
 
 impl LiteSVMBuilder {
@@ -37,7 +38,25 @@ impl LiteSVMBuilder {
         Self {
             svm: LiteSVM::new(),
             programs: Vec::new(),
+            start_slot: None,
         }
+    }
+
+    /// Pin the world's starting slot, overriding the engine's default.
+    ///
+    /// LiteSVM starts at a realistic mainnet slot that shifts across versions
+    /// (0.14's `MAINNET_DEFAULT_SLOT`, derived from the feature-activation
+    /// table). A test whose determinism should not ride that value sets its own
+    /// slot here; most pick `0`, but any value works for tests that need a
+    /// specific (for example mainnet-successor) slot.
+    ///
+    /// Applied before programs deploy: a program's visibility slot is fixed to
+    /// the current slot at deploy time, so pinning after deploy would read the
+    /// program as not-yet-visible (`current_slot < effective_slot`). Warping
+    /// first keeps it visible at the pinned slot.
+    pub fn start_slot(mut self, slot: u64) -> Self {
+        self.start_slot = Some(slot);
+        self
     }
 
     /// Add a program to be deployed
@@ -71,6 +90,13 @@ impl LiteSVMBuilder {
     /// let mut svm = builder.build();
     /// ```
     pub fn build(mut self) -> LiteSVM {
+        // Pin the starting slot before deploying, so each program's visibility
+        // slot (fixed to the current slot at deploy time) matches the pinned
+        // value; warping after deploy would hide the programs.
+        if let Some(slot) = self.start_slot {
+            self.svm.warp_to_slot(slot);
+        }
+
         // Deploy all programs
         for (program_id, program_bytes) in self.programs {
             self.svm
@@ -151,7 +177,7 @@ pub trait ProgramTestExt {
     /// # Example
     /// ```no_run
     /// # use litesvm_utils::ProgramTestExt;
-    /// # use litesvm::LiteSVM;
+    /// # use litesvm_utils::LiteSVM;
     /// # use solana_program::pubkey::Pubkey;
     /// # let mut svm = LiteSVM::new();
     /// # let program_id = Pubkey::new_unique();
@@ -191,11 +217,9 @@ mod tests {
         let program_id = Pubkey::new_unique();
         let program_bytes = vec![1, 2, 3, 4];
 
-        // Test that builder fluent API works - don't call build() to avoid validation
         let mut builder = LiteSVMBuilder::new();
         builder = builder.deploy_program(program_id, &program_bytes);
 
-        // Verify the program was added to the builder
         assert_eq!(builder.programs.len(), 1);
         assert_eq!(builder.programs[0].0, program_id);
     }
@@ -237,5 +261,27 @@ mod tests {
 
         // Verify all 3 programs were added
         assert_eq!(builder.programs.len(), 3);
+    }
+
+    #[test]
+    fn test_start_slot_overrides_engine_default() {
+        fn slot_of(svm: &LiteSVM) -> u64 {
+            svm.get_sysvar::<solana_program::clock::Clock>().slot
+        }
+
+        // No override: the world follows the engine's default (a nonzero
+        // mainnet-era slot under 0.14).
+        let engine_slot = slot_of(&LiteSVMBuilder::new().build());
+        assert_ne!(engine_slot, 0);
+
+        // Override to zero: the deterministic baseline a test can own.
+        assert_eq!(slot_of(&LiteSVMBuilder::new().start_slot(0).build()), 0);
+
+        // A nonzero override is honored too, for tests that need a specific slot.
+        let target = engine_slot + 100;
+        assert_eq!(
+            slot_of(&LiteSVMBuilder::new().start_slot(target).build()),
+            target
+        );
     }
 }

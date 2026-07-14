@@ -1,5 +1,6 @@
 # Rust
-/target/
+# build artifacts at any depth, not just the workspace root
+target/
 anchor-escrow-example/target/
 **/*.rs.bk
 *.pdb
@@ -44,3 +45,9 @@ flamegraph.svg
 *.bak
 *.tmp
 *.temp
+# mdBook build output
+book/book/
+
+# Vendored example program build artifacts
+examples/*/target/
+examples/*/.anchor/

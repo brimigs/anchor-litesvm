@@ -47,9 +47,9 @@
 //! ### Transaction Helpers
 //! Execute transactions with automatic result analysis:
 //! ```rust,ignore
-//! let result = svm.send_instruction(ix, &[&signer])?;
-//! result.assert_success();
-//! assert!(result.compute_units() < 200_000);
+//! let result = svm.send_instruction(ix, &[&signer])?
+//!     .tap(|r| assert!(r.compute_units() < 200_000))
+//!     .assert_success();
 //! ```
 //!
 //! ### Assertion Helpers
@@ -105,9 +105,9 @@
 //! svm.mint_to(&mint.pubkey(), &maker_ata, &maker, 1_000_000_000).unwrap();
 //!
 //! // 4. Execute instruction and analyze results
-//! let result = svm.send_instruction(ix, &[&maker]).unwrap();
-//! result.assert_success();
-//! assert!(result.has_log("Transfer complete"));
+//! let result = svm.send_instruction(ix, &[&maker]).unwrap()
+//!     .tap(|r| assert!(r.has_log("Transfer complete")))
+//!     .assert_success();
 //!
 //! // 5. Verify with clean assertions
 //! svm.assert_token_balance(&maker_ata, 1_000_000_000);
@@ -135,8 +135,7 @@
 //!     svm.mint_to(&mint.pubkey(), &sender_ata, &sender, 1_000_000).unwrap();
 //!
 //!     // Execute transfer
-//!     let result = svm.send_instruction(transfer_ix, &[&sender]).unwrap();
-//!     result.assert_success();
+//!     let _ = svm.send_instruction(transfer_ix, &[&sender]).unwrap().assert_success();
 //!
 //!     // Verify
 //!     svm.assert_token_balance(&sender_ata, 500_000);
@@ -167,17 +166,29 @@
 
 pub mod assertions;
 pub mod builder;
+pub mod metaplex;
+pub mod naming;
 pub mod test_helpers;
+pub mod token_hooks;
+pub mod tokens;
 pub mod transaction;
 
 // Re-export main types for convenience
 pub use assertions::AssertionHelpers;
 pub use builder::{LiteSVMBuilder, ProgramTestExt};
+pub use metaplex::{
+    Creator, MetadataArgs, MetaplexHelpers, TokenStandard, METADATA_SEED, MPL_TOKEN_METADATA_ID,
+};
+pub use naming::{
+    deterministic_keypair, seed_bytes, ActorRegistry, Aliases, ErrorNames, EventInfo,
+    EventRegistry, InstructionNames,
+};
 pub use test_helpers::TestHelpers;
-pub use transaction::{TransactionError, TransactionHelpers, TransactionResult};
+pub use token_hooks::TransferHookTesting;
+pub use tokens::{TokenFabrication, TokenProgram, TOKEN_2022_ID};
+pub use transaction::{InstructionInfo, TransactionError, TransactionHelpers, TransactionResult};
 
-// Re-export commonly used external types
-pub use litesvm::LiteSVM;
-pub use solana_keypair::Keypair;
+// Re-export commonly used external types. Runtime-seam types come through the
+// compat boundary; Pubkey stays on solana_program (the anchor-pinned side).
+pub use anchor_litesvm_compat::{Keypair, LiteSVM, Signer, Transaction, TransactionMetadata};
 pub use solana_program::pubkey::Pubkey;
-pub use solana_signer::Signer;

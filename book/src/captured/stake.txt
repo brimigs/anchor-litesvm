@@ -1,0 +1,15 @@
+
+── staking::Stake ──────────────────────────────────────────
+Transaction  signers=[Alice]
+└── staking::Stake [1] ✓ 48001cu  signer=Alice
+    ├── mpl_core::AddPlugin [2] ✓ 15421cu
+    │   ├── System [3] ✓ (no cu)
+    │   └── System [3] ✓ (no cu)
+    └── mpl_core::AddPlugin [2] ✓ 11838cu
+        └── System [3] ✓ (no cu)
+Compute Units (this run): 48001
+Fee: 5000 lamports
+Legend (3):
+  Alice    = A5qBARFnwRspViGBJ3882LjApyRt8nqYhciAH65YckU
+  staking  = GoZYUCqeKxN2TXNcAnSm8aGfWSpqzBgSqackvDzzFAMg
+  mpl_core = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d

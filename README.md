@@ -64,30 +64,38 @@ anchor-litesvm = "0.4"
 use anchor_litesvm::AnchorLiteSVM;
 use litesvm_utils::{AssertionHelpers, TestHelpers};
 
+// Generate `my_program::client::{accounts, args}` from the IDL, and pair
+// them with a caller-facing pubkey bundle per instruction from that IDL.
 anchor_lang::declare_program!(my_program);
+anchor_litesvm::bundles_from_idl!(my_program);
 
 #[test]
 fn test_my_program() {
-    // One-line setup
+    // One-line setup. The name registers as a pubkey alias, so a failing
+    // send's printed logs read `my_program` instead of the raw program ID.
     let mut ctx = AnchorLiteSVM::build_with_program(
         my_program::ID,
+        "my_program",
         include_bytes!("../target/deploy/my_program.so"),
     );
 
     // Create accounts
     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
 
-    // Build instruction with simplified syntax
-    let ix = ctx.program()
-        .accounts(my_program::client::accounts::Initialize { user: user.pubkey(), .. })
-        .args(my_program::client::args::Initialize { amount: 100 })
-        .instruction()
-        .unwrap();
+    // Build the instruction from a bundle: only the accounts the IDL can't
+    // infer are fields; PDAs and fixed addresses are derived/injected.
+    let ix = ctx.program().build_ix(
+        InitializeBundle { user: user.pubkey() },
+        my_program::client::args::Initialize { amount: 100 },
+    );
 
     // Execute and verify
     ctx.execute_instruction(ix, &[&user]).unwrap().assert_success();
 }
 ```
+
+See [`crates/anchor-litesvm/examples/basic_usage.rs`](crates/anchor-litesvm/examples/basic_usage.rs)
+for a fully compiling version of this flow.
 
 ### For Non-Anchor Programs
 
@@ -127,11 +135,18 @@ fn test_my_program() {
 
 ## Documentation
 
+- **[The book](book/)** - Quickstart, concepts, and worked examples (vault,
+  escrow, stake) against real deployed programs, plus a curated API
+  reference; build it locally with `mdbook build book`
 - **[anchor-litesvm README](crates/anchor-litesvm/README.md)** - Anchor-specific features
 - **[litesvm-utils README](crates/litesvm-utils/README.md)** - Framework-agnostic utilities
-- **[Quick Start Guide](docs/QUICK_START.md)** - 5-minute tutorial
-- **[API Reference](docs/API_REFERENCE.md)** - Complete API docs
-- **[Migration Guide](docs/MIGRATION.md)** - Migrate from raw LiteSVM
+- **[basic_usage example](crates/anchor-litesvm/examples/basic_usage.rs)** - Runnable end-to-end walkthrough
+
+The longer-form guides below predate the IDL-driven bundle API and are awaiting a refresh:
+
+- **[Quick Start Guide](docs/QUICK_START.md)** - 5-minute tutorial (refresh pending)
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API docs (refresh pending)
+- **[Migration Guide](docs/MIGRATION.md)** - Migrate from raw LiteSVM (refresh pending)
 
 ## Examples
 

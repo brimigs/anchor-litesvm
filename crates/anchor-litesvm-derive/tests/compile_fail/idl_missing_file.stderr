@@ -1,0 +1,5 @@
+error: bundles_from_idl!: cannot read $WORKSPACE/target/tests/trybuild/anchor-litesvm-derive/idls/nonexistent.json: No such file or directory (os error 2)
+ --> tests/compile_fail/idl_missing_file.rs:1:42
+  |
+1 | anchor_litesvm_derive::bundles_from_idl!(nonexistent);
+  |                                          ^^^^^^^^^^^

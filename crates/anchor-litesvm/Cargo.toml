@@ -9,20 +9,29 @@ description = "Simplified Anchor testing with LiteSVM - similar syntax to anchor
 documentation = "https://docs.rs/anchor-litesvm"
 keywords = ["solana", "anchor", "litesvm", "testing", "blockchain"]
 
+[lints]
+workspace = true
+
 [dependencies]
 litesvm-utils = { version = "0.4.0", path = "../litesvm-utils" }
-litesvm = { workspace = true }
+anchor-litesvm-derive = { version = "0.4.0", path = "../anchor-litesvm-derive" }
+anchor-litesvm-compat = { version = "0.4.0", path = "../anchor-litesvm-compat" }
 anchor-lang = { workspace = true }
 solana-program = { workspace = true }
-solana-account = "3.4.0"
-solana-hash = "3.1.0"
-solana-keypair = "3.1.2"
-solana-signature = "3.4.0"
-solana-signer = "3.0.0"
-solana-transaction = { version = "3.0.1", features = ["bincode"] }
 spl-token = { workspace = true }
 spl-associated-token-account = { workspace = true }
 borsh = { workspace = true }
 sha2 = { workspace = true }
 thiserror = { workspace = true }
 base64 = "0.22"
+# Parse an Anchor IDL to auto-register all of a program's events for decoding.
+serde_json = "1"
+
+[features]
+# Loads the standard precompiles (ed25519, secp256k1) into the in-memory
+# engine, for programs that verify signatures via the instructions sysvar.
+precompiles = ["litesvm-utils/precompiles"]
+
+[dev-dependencies]
+solana-system-interface = { workspace = true }
+solana-instruction = "3.2.0"

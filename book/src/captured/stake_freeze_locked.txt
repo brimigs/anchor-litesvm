@@ -1,0 +1,16 @@
+
+── staking::Unstake ────────────────────────────────────────
+Transaction  signers=[Alice]
+└── staking::Unstake [1] ✗ 49676cu  signer=Alice
+    ├── AssociatedToken [2] ✓ 16416cu
+    │   ├── Token [3] ✓ 183cu
+    │   ├── System [3] ✓ (no cu)
+    │   ├── Token [3] ✓ 38cu
+    │   └── Token [3] ✓ 235cu
+    └── Error: FreezePeriodNotElapsed
+Error: InstructionError(0, Custom(6005))
+Compute Units (this run): 49676
+Fee: 5000 lamports
+Legend (2):
+  Alice   = A5qBARFnwRspViGBJ3882LjApyRt8nqYhciAH65YckU
+  staking = GoZYUCqeKxN2TXNcAnSm8aGfWSpqzBgSqackvDzzFAMg

@@ -1,0 +1,19 @@
+
+── staking::Unstake ────────────────────────────────────────
+Transaction  signers=[Alice]
+└── staking::Unstake [1] ✓ 87846cu  signer=Alice
+    ├── AssociatedToken [2] ✓ 16416cu
+    │   ├── Token [3] ✓ 183cu
+    │   ├── System [3] ✓ (no cu)
+    │   ├── Token [3] ✓ 38cu
+    │   └── Token [3] ✓ 235cu
+    ├── mpl_core::UpdatePlugin [2] ✓ 18305cu
+    │   └── System [3] ✓ (no cu)
+    ├── mpl_core::UpdatePlugin [2] ✓ 11548cu
+    └── Token [2] ✓ 161cu
+Compute Units (this run): 87846
+Fee: 5000 lamports
+Legend (3):
+  Alice    = A5qBARFnwRspViGBJ3882LjApyRt8nqYhciAH65YckU
+  staking  = GoZYUCqeKxN2TXNcAnSm8aGfWSpqzBgSqackvDzzFAMg
+  mpl_core = CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d

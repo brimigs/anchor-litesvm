@@ -1,0 +1,13 @@
+[book]
+title = "Testing Anchor Programs with anchor-litesvm"
+authors = ["anchor-litesvm contributors"]
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "rust"
+git-repository-url = "https://github.com/brimigs/anchor-litesvm"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

@@ -245,6 +245,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anchor_lang::prelude::*;
 
     #[test]
     fn test_event_error_display() {
@@ -253,5 +254,41 @@ mod tests {
 
         let err = EventError::ParseError("test error".to_string());
         assert_eq!(err.to_string(), "Failed to parse event data: test error");
+    }
+
+    // A real Anchor event: the `#[event]` macro gives it the 8-byte
+    // discriminator and borsh (de)serialization that `register_event` keys on.
+    #[event]
+    #[derive(Debug)]
+    struct Moved {
+        amount: u64,
+    }
+
+    /// `register_event::<E>()` makes the context decode `E`'s on-wire
+    /// `Program data:` payload (discriminator ++ borsh) back to its name and
+    /// `Debug` fields, the form the renderers surface as a note / tree line.
+    #[test]
+    fn register_event_decodes_a_real_anchor_event_by_name_and_fields() {
+        // `Event::data()` returns exactly what `emit!` logs (discriminator ++
+        // borsh body).
+        let mut ctx =
+            crate::AnchorContext::new(anchor_litesvm_compat::LiteSVM::new(), Pubkey::new_unique());
+        ctx.register_event::<Moved>();
+
+        // `decode_bytes` takes the wire bytes (disc ++ borsh); the base64 framing
+        // of a `Program data:` line is the renderer's concern.
+        let raw = Moved { amount: 42 }.data();
+        let info = ctx
+            .event_registry()
+            .decode_bytes(&raw)
+            .expect("registered event should decode");
+        assert_eq!(info.name, "Moved");
+        // Parsed into `(field, value)` pairs (the type name lives in `name`),
+        // so the badge reads `🔔 Moved { .. }`, not `🔔 Moved Moved { .. }`.
+        assert_eq!(info.fields, vec![("amount".to_string(), "42".to_string())]);
+        assert_eq!(info.badge(), "🔔 Moved { amount: 42 }");
+
+        // An unregistered discriminator is a clean miss, not a panic.
+        assert!(ctx.event_registry().decode_bytes(&[9u8; 16]).is_none());
     }
 }

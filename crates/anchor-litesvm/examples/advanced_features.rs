@@ -1,6 +1,5 @@
-use anchor_litesvm::{AnchorLiteSVM, AssertionHelpers, TestHelpers};
+use anchor_litesvm::{AnchorLiteSVM, AssertionHelpers, Signer, TestHelpers};
 use solana_program::pubkey::Pubkey;
-use solana_signer::Signer;
 
 fn main() {
     println!("anchor-litesvm advanced_features");
@@ -11,7 +10,7 @@ fn main() {
 #[allow(dead_code)]
 fn compile_only_example() {
     let program_id = Pubkey::new_unique();
-    let mut ctx = AnchorLiteSVM::build_with_program(program_id, &[]);
+    let mut ctx = AnchorLiteSVM::build_with_program(program_id, "program", &[]);
     let authority = ctx.svm.create_funded_account(10_000_000_000).unwrap();
     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
     let mint = ctx.svm.create_token_mint(&authority, 9).unwrap();

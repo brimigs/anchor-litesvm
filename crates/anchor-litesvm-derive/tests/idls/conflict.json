@@ -1,0 +1,41 @@
+{
+  "address": "11111111111111111111111111111111",
+  "instructions": [
+    {
+      "name": "one",
+      "discriminator": [0, 0, 0, 0, 0, 0, 0, 0],
+      "accounts": [
+        { "name": "user", "writable": true, "signer": true },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              { "kind": "const", "value": [1, 2, 3] },
+              { "kind": "account", "path": "user" }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "two",
+      "discriminator": [1, 1, 1, 1, 1, 1, 1, 1],
+      "accounts": [
+        { "name": "user", "writable": true, "signer": true },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              { "kind": "const", "value": [4, 5, 6] },
+              { "kind": "account", "path": "user" }
+            ]
+          }
+        }
+      ],
+      "args": []
+    }
+  ]
+}

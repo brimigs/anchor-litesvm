@@ -1,0 +1,37 @@
+{
+  "address": "6RviLVy2WPGm7QYfCuZq66vKWF58WVTNWfFE7RgWxcfP",
+  "metadata": {
+    "name": "demoted_fields",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "One PDA seeded on an instruction arg, one seeded on a dotted account-data path, and the well-known token_program default: fixture for bundle-field doc coverage"
+  },
+  "instructions": [
+    {
+      "name": "demote",
+      "discriminator": [1, 2, 3, 4, 5, 6, 7, 8],
+      "accounts": [
+        { "name": "user", "writable": true, "signer": true },
+        { "name": "config", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        {
+          "name": "escrow",
+          "writable": true,
+          "signer": false,
+          "pda": {
+            "seeds": [{ "kind": "arg", "path": "seed" }]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "signer": false,
+          "pda": {
+            "seeds": [{ "kind": "account", "path": "config.owner" }]
+          }
+        }
+      ],
+      "args": [{ "name": "seed", "type": "u64" }]
+    }
+  ]
+}

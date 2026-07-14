@@ -1,0 +1,11 @@
+
+── vault::Deposit ──────────────────────────────────────────
+Transaction  signers=[Alice]
+└── vault::Deposit [1] ✗ 5225cu  signer=Alice
+    └── Error: ConstraintSeeds
+Error: InstructionError(0, Custom(2006))
+Compute Units (this run): 5225
+Fee: 5000 lamports
+Legend (2):
+  Alice = F1xntdTLP71JkUsheiwBUT4F5LnYgKe1NGPkceL6p6gc
+  vault = 6RviLVy2WPGm7QYfCuZq66vKWF58WVTNWfFE7RgWxcfP

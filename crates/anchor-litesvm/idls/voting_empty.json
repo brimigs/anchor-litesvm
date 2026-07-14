@@ -1,0 +1,13 @@
+{
+  "address": "GdPDj9mvShPP3EvnF8FZzRcLxJKxgQG7R3qAWr5R1tZU",
+  "metadata": {
+    "name": "voting",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [],
+  "accounts": [],
+  "errors": [],
+  "types": []
+}

@@ -20,6 +20,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Other Clock fields (slot, epoch, etc.) are left unchanged; for slot-based
   warping, continue using `advance_slot` / `warp_to_slot`.
 
+- `litesvm-utils`: a naming vocabulary shared across the workspace —
+  deterministic actor keypairs (`deterministic_keypair`, `ActorRegistry`),
+  a pubkey alias table (`Aliases`) so printed transaction logs read in a
+  test's own vocabulary instead of raw addresses, and lookup tables for
+  Anchor error/instruction/event names. `TransactionHelpers` and
+  `TransactionResult` grew alias-aware sends (`send_ok`, `send_err`,
+  `send_err_named`) and log rendering (`logs_string`, `print_logs`) that
+  read through the same table. Metaplex Token Metadata support
+  (`MetaplexHelpers`, `MetadataArgs`, `Creator`, `TokenStandard`) and
+  Token-2022 transfer-hook testing (`TransferHookTesting`) round out the
+  framework-agnostic helpers.
+
+- `anchor-litesvm`: `AnchorContext` gains the same alias-table integration
+  (`ctx.alias`, `ctx.cast_actor`, `ctx.cast_mint`, `ctx.label`, `ctx.fund_ata`),
+  context-owned send shortcuts (`send_ok`, `send_err`, `send_err_named`), a
+  fluent build-and-send chain (`Tx`), Anchor event registration and decoding
+  (`register_event`, `register_events_from_idl`, `EventHelpers`), and
+  `BuildableIx` + `Program::build_ix`/`build_ix_with` — pairing an
+  instruction's args type with a caller-supplied pubkey bundle so a test
+  doesn't have to hand-fill an accounts struct field by field.
+
+- `anchor-litesvm-derive` (new crate): `bundles_from_idl!`, a proc-macro invoked
+  alongside `anchor_lang::declare_program!` against the same committed IDL.
+  Per instruction, it emits a `<Ix>Bundle` struct (one `Pubkey` field per
+  account the IDL can't infer), a `From<<Ix>Bundle> for <accounts struct>`
+  that derives every PDA in dependency order and injects fixed addresses
+  (the system program, well-known token programs), a `BuildableIx` pairing
+  with the instruction's args type, and a `<account>_pda(...)` helper per
+  derivable PDA. Adding an account to the program's IDL only requires
+  regenerating; there's no hand-written builder to keep in sync. See
+  `crates/anchor-litesvm/examples/basic_usage.rs` for a compiling example
+  against a small vault program's IDL.
+
+- An mdBook (`book/`) covering the reference and tutorial ground for the
+  crate: a quickstart, the core concepts (the World, actor/alias setup,
+  structured logs), three worked examples against real deployed programs
+  (vault, escrow, stake), and a curated API reference. Every runtime code
+  block is captured output from the crate's own tests, so the book can't
+  drift from what the framework actually does. Build it with
+  `mdbook build book`.
+
 ## [anchor-litesvm 0.4.0] - 2026-04-09
 
 ### Changed

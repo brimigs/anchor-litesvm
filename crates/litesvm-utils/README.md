@@ -29,7 +29,7 @@ litesvm-utils = "0.4"
 
 ```rust
 use litesvm_utils::{LiteSVMBuilder, TestHelpers, AssertionHelpers, TransactionHelpers};
-use solana_signer::Signer;
+use litesvm_utils::Signer;
 
 #[test]
 fn test_my_program() {

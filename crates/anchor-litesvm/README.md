@@ -28,43 +28,52 @@ anchor-litesvm = "0.4"
 ```rust
 use anchor_litesvm::AnchorLiteSVM;
 use litesvm_utils::{AssertionHelpers, TestHelpers};
-use solana_signer::Signer;
+use anchor_litesvm::Signer;
 
-// Generate client types from your program
+// 1. Generate `my_program::client::{accounts, args}` from the IDL...
 anchor_lang::declare_program!(my_program);
+// 2. ...and pair them with a caller-facing pubkey bundle per instruction,
+//    generated from that same IDL.
+anchor_litesvm::bundles_from_idl!(my_program);
 
 #[test]
 fn test_my_anchor_program() {
-    // 1. One-line setup - no mock RPC needed
+    // 3. One-line setup - no mock RPC needed. The name registers as a
+    //    pubkey alias, so a failing send's printed logs read `my_program`
+    //    instead of the raw program ID.
     let mut ctx = AnchorLiteSVM::build_with_program(
         my_program::ID,
+        "my_program",
         include_bytes!("../target/deploy/my_program.so"),
     );
 
-    // 2. Create accounts with built-in helpers
+    // 4. Create accounts with built-in helpers
     let user = ctx.svm.create_funded_account(10_000_000_000).unwrap();
     let mint = ctx.svm.create_token_mint(&user, 9).unwrap();
 
-    // 3. Build instruction with simplified syntax (similar to anchor-client)
-    let ix = ctx.program()
-        .accounts(my_program::client::accounts::Initialize {
+    // 5. Build the instruction from a bundle: only the accounts the IDL
+    //    can't infer are fields here; PDAs and fixed addresses (the system
+    //    program, well-known token programs) are derived/injected.
+    let ix = ctx.program().build_ix(
+        InitializeBundle {
             user: user.pubkey(),
             mint: mint.pubkey(),
-            system_program: solana_system_interface::program::id(),
-        })
-        .args(my_program::client::args::Initialize { amount: 1_000_000 })
-        .instruction()
-        .unwrap();
+        },
+        my_program::client::args::Initialize { amount: 1_000_000 },
+    );
 
-    // 4. Execute and verify
+    // 6. Execute and verify
     ctx.execute_instruction(ix, &[&user])
         .unwrap()
         .assert_success();
 
-    // 5. Deserialize Anchor accounts
-    let account_data: MyAccount = ctx.get_account(&pda).unwrap();
+    // 7. Deserialize Anchor accounts
+    let account_data: MyAccount = ctx.try_load(&pda).unwrap();
 }
 ```
+
+See [`crates/anchor-litesvm/examples/basic_usage.rs`](examples/basic_usage.rs) for
+a fully compiling version of this flow against a small vault program's IDL.
 
 ## Why anchor-litesvm?
 
@@ -104,7 +113,32 @@ let ix = ctx.program()
 
 ## Features
 
-### Simplified Instruction Building
+### Bundled Instruction Construction
+
+`bundles_from_idl!` reads the same IDL `declare_program!` does and, per
+instruction, emits a `<Ix>Bundle` struct (one `Pubkey` field per account the
+IDL can't infer), a `From<<Ix>Bundle> for <accounts struct>` that derives
+every PDA and injects fixed addresses (the system program, well-known token
+programs), and a `BuildableIx` pairing with the instruction's args type.
+Adding an account to the program's IDL only requires regenerating; there's
+no hand-written builder to keep in sync.
+
+```rust
+anchor_lang::declare_program!(my_program);
+anchor_litesvm::bundles_from_idl!(my_program);
+
+let ix = ctx.program().build_ix(
+    MakeBundle { maker: maker.pubkey(), mint_a, mint_b },
+    my_program::client::args::Make { amount, deposit },
+);
+
+ctx.execute_instruction(ix, &[&maker])?.assert_success();
+```
+
+### Manual Instruction Building
+
+For a program without a shippable IDL, or a shape `bundles_from_idl!` can't
+infer, build the accounts struct directly:
 
 ```rust
 let ix = ctx.program()
@@ -123,10 +157,15 @@ ctx.execute_instruction(ix, &[&user])?.assert_success();
 
 ```rust
 // Deserialize with discriminator check
-let account: MyAccount = ctx.get_account(&pda)?;
+let account: MyAccount = ctx.try_load(&pda)?;
 
 // Deserialize without check (for PDAs with custom layouts)
-let account: MyAccount = ctx.get_account_unchecked(&pda)?;
+let account: MyAccount = ctx.try_load_unchecked(&pda)?;
+
+// Test-oriented siblings that panic (with the address and cause) instead
+// of returning a Result:
+let account: MyAccount = ctx.load(&pda);
+let account: MyAccount = ctx.load_unchecked(&pda);
 ```
 
 ### Event Parsing
@@ -212,9 +251,10 @@ if !result.is_success() {
     println!("Error: {:?}", result.error());
 }
 
-// Or assert specific errors
+// Or assert specific errors: a substring match against logs or the error
+// field, or an Anchor custom error code
 result.assert_error("InsufficientFunds");
-result.assert_anchor_error(MyError::InvalidAmount);
+result.assert_error_code(6000);
 ```
 
 ## Testing

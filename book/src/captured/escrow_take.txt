@@ -1,0 +1,22 @@
+
+── escrow::Take ────────────────────────────────────────────
+Transaction  signers=[Bob]
+└── escrow::Take [1] ✓ 66972cu  signer=Bob
+    ├── AssociatedToken [2] ✓ 13416cu
+    │   ├── Token [3] ✓ 183cu
+    │   ├── System [3] ✓ (no cu)
+    │   ├── Token [3] ✓ 38cu
+    │   └── Token [3] ✓ 235cu
+    ├── AssociatedToken [2] ✓ 15017cu
+    │   ├── Token [3] ✓ 183cu
+    │   ├── System [3] ✓ (no cu)
+    │   ├── Token [3] ✓ 38cu
+    │   └── Token [3] ✓ 235cu
+    ├── Token [2] ✓ 105cu
+    ├── Token [2] ✓ 105cu
+    └── Token [2] ✓ 118cu
+Compute Units (this run): 66972
+Fee: 5000 lamports
+Legend (2):
+  Bob    = 9NxEkz3hopsvRkzgCfrLervpta7LAUWAYX2NeNYJyAfp
+  escrow = 4iTshPQzLB9YstwVKJuHqd1UDMQpWRmE3NWeuNt7MrRt

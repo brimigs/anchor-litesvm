@@ -9,15 +9,33 @@ description = "Test helpers for LiteSVM - one-line token operations, assertions,
 documentation = "https://docs.rs/litesvm-utils"
 keywords = ["solana", "litesvm", "testing", "blockchain", "utilities"]
 
+[lints]
+workspace = true
+
 [dependencies]
-litesvm = { workspace = true }
-litesvm-token = { workspace = true }
+anchor-litesvm-compat = { version = "0.4.0", path = "../anchor-litesvm-compat" }
 solana-program = { workspace = true }
 solana-program-pack = { workspace = true }
-solana-keypair = { workspace = true }
-solana-signer = { workspace = true }
-solana-transaction = { workspace = true }
 spl-token = { workspace = true }
 spl-associated-token-account = { workspace = true }
 solana-system-interface = { workspace = true }
+# Token-2022 + transfer-hook testing surface (token_hooks module). The newer
+# split-out interface crates carry state + instruction + extension builders and
+# resolve clean against our solana 3.x, matching what anchor-spl 1.0 pulls.
+spl-token-2022-interface = "2.1.0"
+spl-transfer-hook-interface = "2.1.0"
+spl-tlv-account-resolution = "0.11.1"
 thiserror = { workspace = true }
+# Decode `Program data:` event payloads (base64) so registered Anchor events
+# render by name and fields instead of raw blobs.
+base64 = { workspace = true }
+
+[features]
+# Loads the standard precompiles (ed25519, secp256k1) into the in-memory
+# engine: `LiteSVM::new()` self-enables them under this flag. A passthrough
+# to litesvm's feature, so a suite that verifies signatures never names
+# litesvm directly.
+precompiles = ["anchor-litesvm-compat/precompiles"]
+
+[dev-dependencies]
+proptest = "1.5"

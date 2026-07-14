@@ -2,6 +2,8 @@
 members = [
     "crates/litesvm-utils",
     "crates/anchor-litesvm",
+    "crates/anchor-litesvm-derive",
+    "crates/anchor-litesvm-compat",
 ]
 resolver = "2"
 
@@ -11,18 +13,46 @@ license = "MIT"
 repository = "https://github.com/brimigs/anchor-litesvm"
 keywords = ["solana", "anchor", "litesvm", "testing", "blockchain"]
 
+# Doc lints, applied to each member that opts in with `[lints] workspace = true`.
+# Broken intra-doc links fail `cargo doc`, so the generated API reference
+# can't silently rot.
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+
 [workspace.dependencies]
-litesvm = "0.11.0"
-litesvm-token = "0.11.0"
+# The CPI-invocation-tree work landed upstream (LiteSVM/litesvm#349) and shipped
+# in 0.14.0, so both crates come from crates.io. 0.14.0 rides the solana-4.x
+# runtime crates (transaction, message, account, hash below); those are owned
+# solely by anchor-litesvm-compat, so the whole workspace resolves one version of
+# each and anchor stays on its shared 3.x on-chain crates (instruction, keypair,
+# signer, signature).
+litesvm = "0.14.0"
+litesvm-cpi-tree = "0.14.0"
 anchor-lang = "1.0.0"
 solana-program = "3.0.0"
 solana-program-pack = "3.1.0"
 solana-keypair = "3.1.2"
 solana-signer = "3.0.0"
-solana-transaction = { version = "3.0.1", features = ["bincode"] }
+solana-transaction = "4.1.5"
+solana-message = "4.2.4"
+solana-account = "4.3.0"
+solana-hash = "4.3.0"
+solana-signature = "3.4.1"
 borsh = "1.5.3"
 sha2 = "0.10.8"
 thiserror = "2.0.18"
-spl-token = "9.0.0"
-spl-associated-token-account = "8.0.0"
+base64 = "0.22"
+# `no-entrypoint` keeps these SPL crates from compiling in their own
+# `entrypoint` symbol. Without it, downstream Anchor programs that depend on
+# anchor-litesvm hit a duplicate-`entrypoint` link error on Linux (GNU `ld`);
+# macOS's `ld64` silently tolerates the collision, which is why this only
+# shows up on Linux hosts.
+spl-token = { version = "9.0.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "8.0.0", features = ["no-entrypoint"] }
 solana-system-interface = { version = "2.0.0", features = ["bincode"] }
+syn = { version = "2", features = ["full", "extra-traits"] }
+quote = "1"
+proc-macro2 = "1"
+trybuild = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

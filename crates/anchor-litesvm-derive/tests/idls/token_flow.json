@@ -1,0 +1,44 @@
+{
+  "address": "93pSQu7uuTLntfPChXRG5K65krcp3qp6UCcTCee5br4Z",
+  "metadata": {
+    "name": "token_flow",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Interface-style token instruction fixture for bundles_from_idl! coverage"
+  },
+  "instructions": [
+    {
+      "name": "create",
+      "discriminator": [24, 30, 200, 40, 5, 28, 7, 119],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_program",
+          "writable": false,
+          "signer": false
+        },
+        {
+          "name": "associated_token_program",
+          "writable": false,
+          "signer": false
+        },
+        {
+          "name": "receipt",
+          "writable": true,
+          "signer": false,
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ]
+}

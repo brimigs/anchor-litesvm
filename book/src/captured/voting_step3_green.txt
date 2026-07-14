@@ -1,0 +1,10 @@
+
+── voting::Vote ────────────────────────────────────────────
+Transaction  signers=[Alice]
+└── voting::Vote [1] ✓ 13594cu  signer=Alice
+    └── System [2] ✓ (no cu)
+Compute Units (this run): 13594
+Fee: 5000 lamports
+Legend (2):
+  Alice  = HBc5Y5izwnuY55kUxmWurPx8ciFqavHj1eBzUqsWvWgz
+  voting = GdPDj9mvShPP3EvnF8FZzRcLxJKxgQG7R3qAWr5R1tZU

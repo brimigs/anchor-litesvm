@@ -1,0 +1,3 @@
+error[E0422]: cannot find struct, variant or union type `InitializePoll` in module `voting_empty::client::args`
+5 |     let _ = voting_empty::client::args::InitializePoll { poll_id: 1, start: 0, end: 0, name: String::new(), description: String::new...
+  |                                          ^^^^^^^^^^^^^^ not found in `voting_empty::client::args`

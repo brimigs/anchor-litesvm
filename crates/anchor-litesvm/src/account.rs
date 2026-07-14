@@ -1,5 +1,5 @@
 use anchor_lang::AccountDeserialize;
-use litesvm::LiteSVM;
+use anchor_litesvm_compat::LiteSVM;
 use solana_program::pubkey::Pubkey;
 use thiserror::Error;
 
@@ -133,7 +133,7 @@ mod tests {
         // Create account in LiteSVM
         svm.set_account(
             addr,
-            solana_account::Account {
+            anchor_litesvm_compat::Account {
                 lamports: 1_000_000,
                 data,
                 owner: Pubkey::new_unique(),
@@ -169,7 +169,7 @@ mod tests {
         // Create account in LiteSVM
         svm.set_account(
             addr,
-            solana_account::Account {
+            anchor_litesvm_compat::Account {
                 lamports: 1_000_000,
                 data,
                 owner: Pubkey::new_unique(),
@@ -205,7 +205,7 @@ mod tests {
         // Create account in LiteSVM
         svm.set_account(
             addr,
-            solana_account::Account {
+            anchor_litesvm_compat::Account {
                 lamports: 1_000_000,
                 data,
                 owner: Pubkey::new_unique(),
@@ -258,7 +258,7 @@ mod tests {
         // Create account in LiteSVM
         svm.set_account(
             addr,
-            solana_account::Account {
+            anchor_litesvm_compat::Account {
                 lamports: 1_000_000,
                 data,
                 owner: Pubkey::new_unique(),

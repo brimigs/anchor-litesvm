@@ -1,27 +1,57 @@
-use anchor_litesvm::{AnchorLiteSVM, AssertionHelpers, TestHelpers};
-use solana_program::pubkey::Pubkey;
-use solana_signer::Signer;
+//! Quick-start: pair `declare_program!` with `bundles_from_idl!` to turn a
+//! committed Anchor IDL into a typed instruction builder, then drive it
+//! through an `AnchorContext`.
+//!
+//! `declare_program!`'s expansion gates a couple of on-chain-only branches
+//! behind `cfg(target_os = "solana")` / `cfg(feature = "idl-build")`; those
+//! compile out here (we're off-chain), but `check-cfg` doesn't know the
+//! names, hence the silenced lint below.
+#![allow(unexpected_cfgs)]
+
+use anchor_lang::prelude::Pubkey;
+// clippy sees this as redundant because the 2018+ extern prelude already
+// makes `anchor_lang::` resolvable here; but `declare_program!`'s generated
+// modules reach the crate via `super::anchor_lang`, which only sees names
+// bound by an actual `use` in this module, not the extern-prelude fallback.
+#[allow(clippy::single_component_path_imports)]
+use anchor_lang;
+use anchor_litesvm::{AnchorContext, LiteSVM};
+
+// 1. Generate `vault::client::{accounts, args}` from the committed IDL...
+anchor_lang::declare_program!(vault);
+// 2. ...and pair them with a caller-facing pubkey bundle per instruction,
+//    generated from that same IDL.
+anchor_litesvm::bundles_from_idl!(vault);
 
 fn main() {
-    println!("anchor-litesvm basic_usage");
-    println!("This packaged example is compile-oriented and documents the core test flow.");
-    println!("See the source for a minimal setup using AnchorLiteSVM and litesvm-utils helpers.");
-}
+    // Normally: AnchorLiteSVM::build_with_program(vault::ID, "vault",
+    // include_bytes!("../target/deploy/vault.so")). No compiled program
+    // ships in this repo, so this example builds the instruction without
+    // deploying or executing it.
+    let ctx = AnchorContext::new(LiteSVM::new(), vault::ID);
 
-#[allow(dead_code)]
-fn compile_only_example() {
-    let mut ctx = AnchorLiteSVM::build_with_program(Pubkey::new_unique(), &[]);
-    let payer = ctx.svm.create_funded_account(10_000_000_000).unwrap();
-    let mint = ctx.svm.create_token_mint(&payer, 9).unwrap();
-    let ata = ctx
-        .svm
-        .create_associated_token_account(&mint.pubkey(), &payer)
-        .unwrap();
+    let user = Pubkey::new_unique();
 
-    ctx.svm
-        .mint_to(&mint.pubkey(), &ata, &payer, 1_000_000)
-        .unwrap();
+    // 3. `DepositBundle` has exactly one field: `user`. The `vault` and
+    //    `vault_state` PDAs, and `system_program`, are derived/injected by
+    //    the bundle's generated `From` impl.
+    let ix = ctx.program().build_ix(
+        DepositBundle { user },
+        vault::client::args::Deposit { amount: 1_000_000 },
+    );
 
-    ctx.svm.assert_account_exists(&payer.pubkey());
-    ctx.svm.assert_token_balance(&ata, 1_000_000);
+    assert_eq!(ix.accounts.len(), 4);
+    println!(
+        "built a `deposit` instruction for {} accounts",
+        ix.accounts.len()
+    );
+
+    // 4. The PDA helpers recompute the whole seed chain from the root
+    //    account alone, so a test can assert on them directly. Account
+    //    order follows the IDL: user, vault, vault_state, system_program.
+    let (vault, _bump) = vault_pda(&user);
+    let (vault_state, _bump) = vault_state_pda(&user);
+    assert_eq!(ix.accounts[1].pubkey, vault);
+    assert_eq!(ix.accounts[2].pubkey, vault_state);
+    println!("vault PDA: {vault}, vault_state PDA: {vault_state}");
 }

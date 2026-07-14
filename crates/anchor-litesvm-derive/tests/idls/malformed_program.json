@@ -1,0 +1,22 @@
+{
+  "address": "6RviLVy2WPGm7QYfCuZq66vKWF58WVTNWfFE7RgWxcfP",
+  "metadata": { "name": "malformed_program", "version": "0.1.0", "spec": "0.1.0" },
+  "instructions": [
+    {
+      "name": "deposit",
+      "discriminator": [242, 35, 198, 137, 82, 225, 242, 182],
+      "accounts": [
+        { "name": "user", "writable": true, "signer": true },
+        {
+          "name": "user_x",
+          "writable": true,
+          "pda": {
+            "seeds": [{ "kind": "account", "path": "user" }],
+            "program": { "kind": "const", "value": [1, 2, 3, 4] }
+          }
+        }
+      ],
+      "args": []
+    }
+  ]
+}

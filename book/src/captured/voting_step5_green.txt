@@ -1,0 +1,12 @@
+
+── voting::Vote ────────────────────────────────────────────
+Transaction  signers=[Mallory]
+└── voting::Vote [1] ✗ 8286cu  signer=Mallory
+    ├── System [2] ✗ (no cu)
+    └── Error: InstructionError(0, Custom(0))
+Error: InstructionError(0, Custom(0))
+Compute Units (this run): 8286
+Fee: 5000 lamports
+Legend (2):
+  Mallory = C5shb5FBLN6JbwbMMEMQEoQSGHoFpufvYGodVZx34uri
+  voting  = GdPDj9mvShPP3EvnF8FZzRcLxJKxgQG7R3qAWr5R1tZU
