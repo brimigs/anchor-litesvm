@@ -629,8 +629,8 @@ mod tests {
 
         let slot = svm.get_current_slot();
 
-        // Initial slot should be 0
-        assert_eq!(slot, 0);
+        // litesvm >= 0.13 starts genesis at a non-zero slot baseline
+        assert_eq!(slot, svm.get_sysvar::<solana_program::clock::Clock>().slot);
     }
 
     #[test]
@@ -649,15 +649,16 @@ mod tests {
     #[test]
     fn test_advance_slot_multiple_times() {
         let mut svm = LiteSVM::new();
+        let base = svm.get_current_slot();
 
         svm.advance_slot(10);
-        assert_eq!(svm.get_current_slot(), 10);
+        assert_eq!(svm.get_current_slot(), base + 10);
 
         svm.advance_slot(25);
-        assert_eq!(svm.get_current_slot(), 35);
+        assert_eq!(svm.get_current_slot(), base + 35);
 
         svm.advance_slot(5);
-        assert_eq!(svm.get_current_slot(), 40);
+        assert_eq!(svm.get_current_slot(), base + 40);
     }
 
     #[test]
